@@ -73,6 +73,29 @@ Plus SAP's built-ins which the plugin activates: `abap_list_destinations`,
    ```
    On macOS the path is `~/eclipse/java-2025-09/Eclipse.app/Contents/Eclipse/eclipse.ini`.
 
+   <details>
+   <summary><b>How to find your destination ID</b></summary>
+
+   In ADT, a *destination ID* is the internal name of an ABAP project's
+   connection. It's not the SID alone — it usually looks like
+   `A4H_001_marian_en_1` (`<SID>_<client>_<user>_<language>_<seq>`).
+
+   Three ways to find it, easiest first:
+
+   - **Project Explorer**: the project name shown for an ABAP project in
+     ADT's Project Explorer view *is* the destination ID. Just copy it.
+   - **Properties**: right-click an ABAP project → *Properties* → *ABAP
+     Project* — the destination ID is shown there.
+   - **From the running MCP server**: once the plugin is running, call
+     SAP's built-in `abap_list_destinations` tool — it returns the set of
+     destination IDs the registry knows about (only populated for projects
+     you're currently logged into).
+
+   If you skip this setting entirely, the plugin auto-picks the *first*
+   available ABAP project in your workspace. Set it explicitly when you
+   have more than one project and want a specific one.
+   </details>
+
 4. Restart Eclipse with `-clean` (one-time, so the new bundle is registered):
    ```bash
    pkill -f Eclipse
