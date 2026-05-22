@@ -31,11 +31,11 @@ GitHub Releases is enough for v0.1.
 1. **Create the GitHub repo**:
    ```bash
    cd ~/DEV/arc1-mcp-ext
-   gh repo create marianfoo/arc1-mcp-ext --public --source=. --remote=origin --push
+   gh repo create marianfoo/arc1-adt-abap-mcp-ext --public --source=. --remote=origin --push
    ```
    (Or use the GitHub web UI to create an empty repo, then `git remote add origin ... && git push -u origin main`.)
 
-2. **Replace `<your-user>` placeholders** in `README.md` with your actual
+2. **Replace `marianfoo` placeholders** in `README.md` with your actual
    GitHub username/org. (Script `scripts/finalize-readme.sh` does this.)
 
 3. **Pick a license author name**. Currently set to "Marian Zeis" in

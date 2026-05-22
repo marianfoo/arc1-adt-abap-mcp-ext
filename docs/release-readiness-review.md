@@ -38,7 +38,7 @@ first `git push`. None are blockers; all are 1-minute fixes.
 
 ## Things you (maintainer) need to do before publishing
 
-### 1. Replace `<your-user>` placeholders
+### 1. Replace `marianfoo` placeholders
 
 The README and `docs/plans/03-publishing.md` reference your future GitHub
 username/org as a placeholder. Run:
@@ -75,7 +75,7 @@ cd ~/DEV/arc1-mcp-ext
 ./scripts/finalize-readme.sh marianfoo
 
 # 2. create the GitHub repo (replace marianfoo with your GitHub user/org)
-gh repo create marianfoo/arc1-mcp-ext --public --source=. --remote=origin --push
+gh repo create marianfoo/arc1-adt-abap-mcp-ext --public --source=. --remote=origin --push
 
 # 3. cut v0.1.0
 git tag v0.1.0
@@ -87,7 +87,7 @@ After that, users can install with:
 
 ```bash
 curl -L -o ~/eclipse/.../dropins/com.arc1.mcp_0.1.0.jar \
-  https://github.com/marianfoo/arc1-mcp-ext/releases/download/v0.1.0/com.arc1.mcp_0.1.0.jar
+  https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases/download/v0.1.0/com.arc1.mcp_0.1.0.jar
 ```
 
 ## Known limitations of v0.1.0

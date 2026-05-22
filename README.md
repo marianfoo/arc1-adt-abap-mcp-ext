@@ -1,4 +1,4 @@
-# arc1-mcp-ext
+# arc1-adt-abap-mcp-ext
 
 **Extend SAP's hidden ADT MCP server inside Eclipse with extra ABAP repository tools — no extra process to run, just one JAR in your `dropins/`.**
 
@@ -48,7 +48,7 @@ Plus SAP's built-ins which the plugin activates: `abap_list_destinations`,
 ## Install
 
 1. Download the latest `com.arc1.mcp_<version>.jar` from the
-   [releases page](https://github.com/<your-user>/arc1-mcp-ext/releases) (or
+   [releases page](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases) (or
    build it yourself — see below).
 
 2. Drop it into your Eclipse install's `dropins/` folder. Typical path on macOS:
@@ -171,8 +171,8 @@ All via `-D` JVM args in `eclipse.ini`:
 ## Build from source
 
 ```bash
-git clone https://github.com/<your-user>/arc1-mcp-ext.git
-cd arc1-mcp-ext
+git clone https://github.com/marianfoo/arc1-adt-abap-mcp-ext.git
+cd arc1-adt-abap-mcp-ext
 ./build.sh                # produces com.arc1.mcp_0.1.0.jar
 INSTALL=yes ./build.sh    # also copies to your local Eclipse dropins/
 ```
@@ -228,7 +228,7 @@ Implement `com.sap.adt.mcp.core.IAdtMCPTool` in your own bundle and add a
 uses.
 
 ### Where do I report bugs?
-[GitHub Issues](https://github.com/<your-user>/arc1-mcp-ext/issues).
+[GitHub Issues](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/issues).
 
 ## License
 
