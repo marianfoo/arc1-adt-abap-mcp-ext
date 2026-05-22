@@ -45,6 +45,10 @@ jobs:
       - name: Validate plugin.xml
         run: |
           set -e
+          # ubuntu-latest doesn't ship libxml2-utils, so install it on demand
+          if ! command -v xmllint >/dev/null; then
+              sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+          fi
           xmllint --noout plugin.xml
           echo "plugin.xml is well-formed."
           # Confirm every class referenced exists
