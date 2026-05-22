@@ -8,56 +8,32 @@ on:
 permissions:
   contents: write
 
+# Note: this workflow does NOT build the plugin in CI (see build.yml for why).
+# It creates an empty GitHub Release on tag push so the maintainer can attach
+# the locally-built JAR with `gh release upload v<X.Y.Z> com.arc1.mcp_<X.Y.Z>.jar`.
+
 jobs:
-  release:
+  create-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Restore Eclipse install
-        uses: actions/cache@v4
-        with:
-          path: eclipse
-          key: eclipse-for-abap-3.58-${{ runner.os }}
-
-      - name: Install Eclipse if cache miss
-        run: |
-          if [[ ! -d eclipse/eclipse ]]; then
-            mkdir -p eclipse && cd eclipse
-            wget -q https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/2025-09/R/eclipse-java-2025-09-R-linux-gtk-x86_64.tar.gz -O eclipse.tar.gz
-            tar -xzf eclipse.tar.gz && rm eclipse.tar.gz
-            ./eclipse/eclipse -application org.eclipse.equinox.p2.director \
-              -repository https://tools.hana.ondemand.com/2025-09 \
-              -installIU com.sap.adt.feature.feature.group \
-              -destination $PWD/eclipse \
-              -profile SDKProfile -noSplash || true
-          fi
-
-      - name: Build
-        run: |
-          P2_DIR=$(find $HOME -maxdepth 5 -type d -name "plugins" -path "*/.p2/*" | head -1)
-          [[ -n "$P2_DIR" ]] && sed -i "s|\$HOME/.p2/pool/plugins|$P2_DIR|g" build.sh
-          # Sync version in MANIFEST.MF to the git tag (e.g. v0.2.0 -> 0.2.0)
-          VERSION=${GITHUB_REF_NAME#v}
-          sed -i "s/^Bundle-Version: .*/Bundle-Version: $VERSION/" META-INF/MANIFEST.MF
-          ./build.sh
-          # Rename JAR to match tag version
-          mv com.arc1.mcp_0.1.0.jar com.arc1.mcp_${VERSION}.jar 2>/dev/null || true
-
-      - name: Create GitHub release
+      - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          files: com.arc1.mcp_*.jar
+          draft: false
           generate_release_notes: true
           body: |
             ## Install
 
-            Drop the JAR into your Eclipse install's `dropins/` folder and restart Eclipse with `-clean`.
+            Download the `com.arc1.mcp_<version>.jar` asset below, drop it into your Eclipse install's `dropins/` folder, and restart Eclipse with `-clean`. See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for full setup including the `eclipse.ini` configuration.
 
-            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for full setup including `eclipse.ini` configuration.
+            ## Verify
+
+            ```bash
+            ./scripts/smoke-test.sh <your-destination-id>
+            ```
+
+            ## Notes
+
+            The plugin JAR is built locally (SAP ADT JARs aren't redistributable, so no public CI build for v0.1). The maintainer uploads the JAR with `gh release upload` after each tag push. If the JAR is missing from this release, please open an issue.
