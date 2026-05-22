@@ -138,5 +138,19 @@ echo "================================================================"
 call_tool 11 arc1_sap_read_source "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/CL_ABAP_TYPEDESCR\"}"
 echo ""
 
+echo "================================================================"
+echo "TEST 10 (v0.3): arc1_sap_http_post — repository/nodestructure"
+echo "================================================================"
+BODY='<asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0"><asx:values><DATA><TV_NODEKEY>000000</TV_NODEKEY></DATA></asx:values></asx:abap>'
+ESCAPED_BODY=$(printf '%s' "$BODY" | python3 -c 'import json,sys;print(json.dumps(sys.stdin.read()))')
+call_tool 12 arc1_sap_http_post "{\"destination\":\"$DEST\",\"uri\":\"/sap/bc/adt/repository/nodestructure\",\"accept\":\"application/vnd.sap.as+xml; charset=UTF-8; dataname=com.sap.adt.RepositoryObjectTreeContent\",\"contentType\":\"application/vnd.sap.as+xml; charset=UTF-8; dataname=com.sap.adt.RepositoryObjectTreeContent\",\"body\":${ESCAPED_BODY}}"
+echo ""
+
+echo "================================================================"
+echo "TEST 11 (v0.3): arc1_sap_list_transports — Modifiable"
+echo "================================================================"
+call_tool 13 arc1_sap_list_transports "{\"destination\":\"$DEST\",\"status\":\"Modifiable\",\"parse\":true}"
+echo ""
+
 echo "Smoke tests complete."
 rm -f "$HEAD"

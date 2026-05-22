@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-22
+
+Extends the HTTP foundation from v0.2 with POST support and ships one typed
+endpoint wrapper on top.
+
+### Added
+- `AdtHttp.post(...)` — POST counterpart to `AdtHttp.get(...)`, accepts a
+  body and Content-Type. Uses `com.sap.adt.communication.message.ByteArrayMessageBody`.
+- `arc1_sap_http_post` — generic POST escape hatch. UTF-8 string body.
+- `arc1_sap_list_transports` — list ABAP transport requests via
+  `/sap/bc/adt/cts/transportrequests` with filters (username, status,
+  requestType). Optional `parse=true` returns a minimal structured list.
+
+### Deferred to v0.4
+- `arc1_sap_where_used` — endpoint URI is verified but XML request body
+  shape needs an Eclipse HTTP trace to confirm.
+- `arc1_sap_object_structure` — URI literal not cleanly extractable from
+  bytecode; also needs trace capture.
+
 ## [0.2.0] - 2026-05-22
 
 Adds an HTTP foundation that bypasses Eclipse's workspace-`IFile` model and

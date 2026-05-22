@@ -12,8 +12,10 @@ import java.util.Map;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
 import com.sap.adt.communication.message.AdtRequestFactory;
+import com.sap.adt.communication.message.ByteArrayMessageBody;
 import com.sap.adt.communication.message.HeadersFactory;
 import com.sap.adt.communication.message.IHeaders;
+import com.sap.adt.communication.message.IMessageBody;
 import com.sap.adt.communication.message.IRequest;
 import com.sap.adt.communication.message.IRequestFactory;
 import com.sap.adt.communication.message.IResponse;
@@ -35,6 +37,17 @@ final class AdtHttp {
     }
 
     static Response get(String destinationId, String pathAndQuery, String accept) throws IOException {
+        return call(destinationId, IRequest.Method.GET, pathAndQuery, accept, null, null);
+    }
+
+    static Response post(String destinationId, String pathAndQuery, String accept,
+                         String contentType, byte[] body) throws IOException {
+        return call(destinationId, IRequest.Method.POST, pathAndQuery, accept, contentType, body);
+    }
+
+    private static Response call(String destinationId, IRequest.Method method,
+                                 String pathAndQuery, String accept,
+                                 String contentType, byte[] body) throws IOException {
         IStatelessSystemSession session = AdtSystemSessionFactory
             .createSystemSessionFactory()
             .createStatelessSession(destinationId);
@@ -44,9 +57,17 @@ final class AdtHttp {
             headers.setField(HeadersFactory.newField("Accept", accept));
         }
 
+        IMessageBody msgBody = null;
+        if (body != null) {
+            String ct = contentType == null || contentType.isEmpty()
+                ? "application/octet-stream"
+                : contentType;
+            msgBody = new ByteArrayMessageBody(ct, body);
+        }
+
         IRequestFactory reqFactory = AdtRequestFactory.createRequestFactory();
         IRequest request = reqFactory.createInstance(
-            IRequest.Method.GET, URI.create(pathAndQuery), headers, null);
+            method, URI.create(pathAndQuery), headers, msgBody);
 
         IResponse response = session.sendRequest(new NullProgressMonitor(), request);
         return Response.from(response);
