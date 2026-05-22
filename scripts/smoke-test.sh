@@ -126,5 +126,17 @@ echo "================================================================"
 call_tool 9 arc1_sap_object_types "{\"destination\":\"$DEST\",\"typeFilter\":\"CLAS\"}"
 echo ""
 
+echo "================================================================"
+echo "TEST 8 (v0.2): arc1_sap_http_get /sap/bc/adt/discovery"
+echo "================================================================"
+call_tool 10 arc1_sap_http_get "{\"destination\":\"$DEST\",\"uri\":\"/sap/bc/adt/discovery\",\"accept\":\"application/atomsvc+xml\"}"
+echo ""
+
+echo "================================================================"
+echo "TEST 9 (v0.2): arc1_sap_read_source CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 11 arc1_sap_read_source "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/CL_ABAP_TYPEDESCR\"}"
+echo ""
+
 echo "Smoke tests complete."
 rm -f "$HEAD"

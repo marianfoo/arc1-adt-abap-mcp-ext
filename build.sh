@@ -38,6 +38,7 @@ BUNDLES=(
     "com.sap.adt.project"
     "com.sap.adt.destinations"
     "com.sap.adt.destinations.model"
+    "com.sap.adt.communication"
     "org.eclipse.core.runtime"
     "org.eclipse.core.resources"
     "org.eclipse.core.jobs"
@@ -68,7 +69,8 @@ mkdir -p build/META-INF
 cp META-INF/MANIFEST.MF build/META-INF/
 cp plugin.xml build/
 
-OUT="com.arc1.mcp_0.1.0.jar"
+VERSION=$(grep '^Bundle-Version:' META-INF/MANIFEST.MF | awk '{print $2}' | tr -d '\r')
+OUT="com.arc1.mcp_${VERSION}.jar"
 rm -f "$OUT"
 "$JAR" cfm "$OUT" build/META-INF/MANIFEST.MF -C build .
 

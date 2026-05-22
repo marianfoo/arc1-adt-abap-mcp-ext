@@ -9,6 +9,8 @@
       <mcpTool class="com.arc1.mcp.Arc1SapListProjectsTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapSystemInfoTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapObjectTypesTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapHttpGetTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapReadSourceTool"/>
    </extension>
    <extension point="org.eclipse.ui.startup">
       <startup class="com.arc1.mcp.Arc1Startup"/>

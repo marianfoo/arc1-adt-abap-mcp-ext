@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-22
+
+Adds an HTTP foundation that bypasses Eclipse's workspace-`IFile` model and
+unblocks any future tool that maps to an ADT REST endpoint.
+
+### Added
+- `AdtHttp` internal helper: thin facade over `AdtSystemSessionFactory` /
+  `AdtRequestFactory` / `HeadersFactory` for stateless GET-style calls.
+  Caps response bodies at 256 KB.
+- `arc1_sap_http_get` — generic ADT GET escape hatch. Authenticated by
+  Eclipse's destination machinery. Use for any endpoint without a typed
+  wrapper yet.
+- `arc1_sap_read_source` — fetch source code for an ABAP object URI (or
+  source URI directly). For CLAS, supports include segments
+  (definitions / implementations / testclasses / macros).
+
+### Dependencies
+- `Require-Bundle` now includes `com.sap.adt.communication;[3.58.0,4.0.0)`.
+
 ## [0.1.0] - 2026-05-22
 
 Initial release. Wakes the dormant SAP ADT MCP server in Eclipse 2025-09 / ADT 3.58
