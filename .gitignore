@@ -1,0 +1,13 @@
+build/
+*.jar
+.DS_Store
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+# Eclipse PDE if anyone imports the project
+.settings/
+bin/
+target/

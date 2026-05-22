@@ -1,0 +1,71 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Eclipse install
+        id: cache-eclipse
+        uses: actions/cache@v4
+        with:
+          path: eclipse
+          key: eclipse-for-abap-3.58-${{ runner.os }}
+
+      - name: Download Eclipse for ABAP
+        if: steps.cache-eclipse.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p eclipse
+          cd eclipse
+          # Eclipse 2025-09 Java IDE — has the p2 director we'll use to install ADT
+          wget -q https://www.eclipse.org/downloads/download.php?file=/technology/epp/downloads/release/2025-09/R/eclipse-java-2025-09-R-linux-gtk-x86_64.tar.gz -O eclipse.tar.gz
+          tar -xzf eclipse.tar.gz
+          rm eclipse.tar.gz
+
+      - name: Install SAP ADT into Eclipse
+        if: steps.cache-eclipse.outputs.cache-hit != 'true'
+        run: |
+          ./eclipse/eclipse/eclipse -application org.eclipse.equinox.p2.director \
+            -repository https://tools.hana.ondemand.com/2025-09 \
+            -installIU com.sap.adt.feature.feature.group \
+            -destination $PWD/eclipse/eclipse \
+            -profile SDKProfile -noSplash || true
+          ls -la ~/.p2/pool/plugins/ | grep -E "com\.sap\.adt|justj" | head -5
+
+      - name: Build plugin
+        run: |
+          # Repoint build.sh's p2 pool path if running in a fresh runner
+          P2_DIR=$(find $HOME -maxdepth 5 -type d -name "plugins" -path "*/.p2/*" | head -1)
+          if [[ -n "$P2_DIR" ]]; then
+            echo "Using P2 pool: $P2_DIR"
+            sed -i "s|\$HOME/.p2/pool/plugins|$P2_DIR|g" build.sh || true
+          fi
+          ./build.sh
+
+      - name: Verify built JAR
+        run: |
+          JAR=com.arc1.mcp_*.jar
+          ls -lh $JAR
+          jar tf $JAR | grep -E "\.class$" | sort
+          unzip -p $JAR META-INF/MANIFEST.MF | head -20
+          unzip -p $JAR plugin.xml | head -20
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: com.arc1.mcp-build-${{ github.sha }}
+          path: com.arc1.mcp_*.jar
+          retention-days: 30
