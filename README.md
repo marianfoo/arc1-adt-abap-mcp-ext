@@ -1,5 +1,9 @@
 # arc1-adt-abap-mcp-ext
 
+[![build](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/actions/workflows/build.yml/badge.svg)](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/marianfoo/arc1-adt-abap-mcp-ext?display_name=tag&sort=semver)](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases)
+[![license](https://img.shields.io/github/license/marianfoo/arc1-adt-abap-mcp-ext)](LICENSE)
+
 **Extend SAP's hidden ADT MCP server inside Eclipse with extra ABAP repository tools — no extra process to run, just one JAR in your `dropins/`.**
 
 SAP ships a Model Context Protocol (MCP) server inside ADT 3.58+ that exposes
@@ -9,16 +13,18 @@ hasn't enabled it yet. This Eclipse plugin:
 
 1. **Wakes the server up** automatically on Eclipse startup (reflection into
    `AdtMCPCorePlugin.startMCPServer`).
-2. **Contributes 7 extra read-only tools** via the supported
+2. **Contributes 11 extra tools** via the supported
    `com.sap.adt.mcp.core.adtMcpTools` extension point.
 3. **Auto-logs into your ABAP project** so the destination registry is
    populated by the time the LLM asks for backend data.
 
 Result: a working local MCP endpoint at `http://localhost:54322/mcp` that
-serves both SAP's own 8 tools **and** our 7, ready to be added to any
-MCP-capable AI client config.
+serves both SAP's own 8 tools **and** our 11 — **19 tools total**, ready to
+be added to any MCP-capable AI client config.
 
 ## Tools added
+
+### Search + metadata (v0.1.0)
 
 | Tool | What it does |
 |---|---|
@@ -30,11 +36,29 @@ MCP-capable AI client config.
 | `arc1_sap_system_info` | Installed software components (SAP_BASIS release etc.), servers, clients, status. |
 | `arc1_sap_object_types` | Workbench object type catalog with URI templates and capabilities. |
 
-Plus SAP's built-ins which the plugin activates: `abap_list_destinations`,
-`abap_generators-list_generators`, `abap_generators-get_schema`,
-`abap_generators-generate_objects`, `abap_transport-get`,
-`abap_transport-create`, `abap_business_services-fetch_services`,
+### Source reading + HTTP escape hatch (v0.2.0)
+
+| Tool | What it does |
+|---|---|
+| `arc1_sap_read_source` | Fetch ABAP source code for an object or source URI. Supports CLAS include segments (`definitions`, `implementations`, `testclasses`, `macros`). |
+| `arc1_sap_http_get` | Generic authenticated GET to any `/sap/bc/adt/...` endpoint. Escape hatch for endpoints without a typed wrapper. |
+
+### Transport + POST (v0.3.0)
+
+| Tool | What it does |
+|---|---|
+| `arc1_sap_list_transports` | List ABAP transport requests with username / status / requestType filters. |
+| `arc1_sap_http_post` | Generic authenticated POST to any `/sap/bc/adt/...` endpoint. Pairs with `arc1_sap_http_get`. |
+
+### SAP built-ins activated by this plugin (8)
+
+`abap_list_destinations`, `abap_generators-list_generators`,
+`abap_generators-get_schema`, `abap_generators-generate_objects`,
+`abap_transport-get`, `abap_transport-create`,
+`abap_business_services-fetch_services`,
 `abap_business_services-fetch_service_information`.
+
+**Total: 19 tools available** in the running MCP server once you install the plugin.
 
 ## Requirements
 
@@ -48,8 +72,8 @@ Plus SAP's built-ins which the plugin activates: `abap_list_destinations`,
 ## Install
 
 1. Download the latest `com.arc1.mcp_<version>.jar` from the
-   [releases page](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases) (or
-   build it yourself — see below).
+   [releases page](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases)
+   (current: `v0.3.0`) — or build it yourself, see below.
 
 2. Drop it into your Eclipse install's `dropins/` folder. Typical path on macOS:
    ```
