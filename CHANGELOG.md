@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Document the relationship to [`adt-ls`](https://github.com/marianfoo/adt-ls)
+  (the TypeScript SDK over SAP's headless ABAP language server) and record why
+  this plugin does **not** consume it as a dependency: decision **D10** in
+  `docs/decisions.md`, a "What about `adt-ls`?" FAQ entry plus a pick-by-where-
+  you-run table in `README.md`, a Non-goals pointer in `CLAUDE.md`, and a note
+  in `docs/architecture.md`. No code changes.
+
 ## [0.4.0] - 2026-06-11
 
 **Requires ADT 3.60+.** ADT 3.60 ships SAP's MCP server as a supported feature

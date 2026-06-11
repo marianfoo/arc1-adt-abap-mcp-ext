@@ -183,4 +183,7 @@ does not enforce that at runtime in the default (non-strict) resolver mode, and
 `javac` ignores it — so the plugin resolves and compiles. It's a signal worth
 tracking, not a current breakage.
 
-No third-party libraries.
+No third-party libraries. Notably *not* a dependency: the headless
+[`adt-ls`](https://github.com/marianfoo/adt-ls) SDK — inside Eclipse we already
+have the full ADT, so linking the headless edition would add a Node process and
+a second ADT for no new reach. See `docs/decisions.md` D10.

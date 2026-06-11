@@ -169,3 +169,67 @@ starting it at all).
 **What did *not* change**: the `<mcpTool>` extension point, tool-name validation
 (`^[A-Za-z0-9_-]+$`), and `IAdtMCPTool.execute(String)` are all unchanged on
 3.60, so every tool keeps working as-is. See `docs/plans/06-v0.4-pure-tool-provider.md`.
+
+## D10. `adt-ls` is a sibling project, not a dependency
+
+**Decision**: This plugin does **not** consume
+[`adt-ls`](https://github.com/marianfoo/adt-ls) — or the headless SAP `adt-ls`
+language server it wraps — as a build- or run-time dependency. `adt-ls` is
+documented as a *sibling* approach (the headless / programmatic / CI cousin of
+this plugin) so users and contributors can pick the right tool, but no code path
+here imports, spawns, or links it.
+
+**What `adt-ls` is**: a TypeScript / Node SDK (`createAdtLs(...)`, ESM, Node ≥ 20,
+its only dependency `vscode-jsonrpc`) that **spawns and drives SAP's headless
+`adt-ls` process** over LSP (named-pipe JSON-RPC) + MCP. It surfaces a rich
+namespaced API — `repository`, `source`/`lifecycle` (create / update /
+**activate** / run unit tests), `navigation` (definitions, references, hover,
+completion, **syntax check**, formatting), `quality` (**ATC**, coverage),
+`services`, `transport`. It is the *out-of-Eclipse* way to reach the same ADT
+operations this plugin reaches in-process.
+
+**Why not depend on it**:
+
+1. **Architectural redundancy.** This plugin already runs *inside*
+   Eclipse-for-ABAP, which **is** the full ADT runtime. `adt-ls` is the
+   *headless* edition of that same ADT. Embedding it here would mean spawning a
+   second headless ADT from inside the real one (Java → Node → a second JVM) to
+   reach the same backend `AdtHttp` already reaches via Eclipse's
+   `IStatelessSystemSession`. Pure overhead, zero new reach. (Extends
+   [D1](#d1-wrap-eclipses-java-adt-services-instead-of-reimplementing-adt-rest-clients).)
+2. **Wrong language / runtime.** `adt-ls` is a Node ESM package. Consuming it
+   from a Java OSGi bundle means a child `node`/`bun` process and an IPC bridge —
+   a third-party runtime dependency by another name, which
+   [D8](#d8-no-third-party-dependencies) rules out, and an "extra process," which
+   the plugin's whole pitch ("without any extra process") rules out.
+3. **Non-goal overlap.** The capabilities `adt-ls` adds over this plugin are
+   mostly *write / activate / test* flows. Mutating ABAP belongs in SAP's own MCP
+   surface (`abap_transport-create`, `abap_generators-generate_objects`) or in the
+   Eclipse editor — explicit non-goals here.
+
+**The legitimate, indirect use**: `adt-ls` (and the underlying headless `adt-ls`)
+is a useful **research reference** when we *do* implement roadmap tools natively —
+`arc1_sap_where_used` (≈ `navigation.references`), `arc1_sap_object_structure`
+(≈ `navigation.symbols`), `arc1_sap_check_syntax` (≈ `navigation.syntaxCheck`).
+It confirms *which* ADT operations are reachable and what their inputs/outputs
+look like. But those tools still land here as native `AdtHttp` calls to
+`/sap/bc/adt/...` — `adt-ls` informs them, it isn't linked by them. (Its LSP/MCP
+transport abstracts the ADT REST body shapes away, so even as a reference it
+doesn't hand over the REST literals; an Eclipse HTTP trace still does — which is
+why those tools remain on the roadmap, not shipped.)
+
+**Where each approach fits** (the "three doors"):
+
+| | This plugin (`com.arc1.mcp`) | `adt-ls` SDK | ARC-1 |
+|---|---|---|---|
+| Runs | inside Eclipse-for-ABAP | any Node/Bun app, CI | standalone server / BTP |
+| Process model | zero extra processes | spawns headless `adt-ls` | managed service |
+| Surface | read-only tools on SAP's MCP | full programmatic API (read + write + ATC + tests) | governed multi-client MCP |
+| Pick it when | "one dev, in Eclipse, no extra moving parts" | "scripting / CI / headless automation" | "centralized, audited, multi-user" |
+
+**Implication**: keep this plugin's dependency set exactly as it is — SAP ADT
+OSGi bundles + the JDK, nothing else. If a request is "headless", "programmatic",
+"in CI", or "drive ABAP from Node", that's `adt-ls`; if it's "centralized /
+managed / BTP", that's ARC-1. Both are out of scope here by design. Extends
+[D1](#d1-wrap-eclipses-java-adt-services-instead-of-reimplementing-adt-rest-clients)
+and [D8](#d8-no-third-party-dependencies); supersedes nothing.

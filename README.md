@@ -405,6 +405,27 @@ audit logging, multi-client governance, BTP-native deployment. Use ARC-1
 when you want a centralized managed service. Use this plugin when you want
 "one developer, inside Eclipse, zero extra processes".
 
+### What about `adt-ls`? Can this plugin use it?
+**[`adt-ls`](https://github.com/marianfoo/adt-ls)** is a TypeScript/Node SDK
+that spawns and drives SAP's *headless* `adt-ls` language server over LSP + MCP.
+It's the out-of-Eclipse cousin of this plugin: a programmatic API for
+repository, source, **activate**, **unit tests**, **ATC**, syntax check, and
+transports — great for scripting and CI.
+
+This plugin does **not** depend on it, by design. We already run *inside*
+Eclipse-for-ABAP, which is the full ADT — pulling in `adt-ls` would spawn a
+second, headless ADT (Java → Node → another JVM) to reach a backend we already
+reach in-process, and would add a third-party runtime plus an extra process
+(both ruled out — see [decision D10](docs/decisions.md#d10-adt-ls-is-a-sibling-project-not-a-dependency)).
+
+Pick by where you run:
+
+| You want… | Use |
+|---|---|
+| MCP tools **inside Eclipse**, zero extra processes | **this plugin** |
+| **Headless / CI / scripting** ABAP automation from Node | [`adt-ls`](https://github.com/marianfoo/adt-ls) |
+| **Centralized, audited, multi-user** MCP (BTP) | [ARC-1](https://github.com/marianfoo/arc-1) |
+
 ### Where do I report bugs?
 [GitHub Issues](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/issues).
 Include your Eclipse + ADT versions, plugin version (the JAR filename), and
