@@ -1,8 +1,13 @@
 # Architecture
 
-`com.arc1.mcp` is a single OSGi bundle that plugs into the ADT MCP server that SAP
-ships inside Eclipse-for-ABAP (ADT 3.58+). It contributes additional MCP tools without
-modifying any SAP code.
+`com.arc1.mcp` is a single OSGi bundle that plugs into the ADT MCP server that
+SAP ships inside Eclipse-for-ABAP (**ADT 3.60+**). It contributes additional MCP
+tools without modifying any SAP code, and without touching the server lifecycle —
+SAP owns starting/stopping the server.
+
+> **Version note**: This describes v0.4.0+ (ADT 3.60). Versions ≤ 0.3.x targeted
+> ADT 3.58/3.59 and reflectively started the then-dormant server themselves; see
+> `docs/decisions.md` D3 (superseded by D9) for that history.
 
 ## High-level flow
 
@@ -10,28 +15,30 @@ modifying any SAP code.
 Eclipse Workbench startup
     │
     ├── OSGi resolves bundles (incl. com.arc1.mcp from dropins/)
+    │     requires com.sap.adt.* [3.60.0,4.0.0) — refuses to load on older ADT
     │
-    ├── Arc1Startup.earlyStartup()  ← invoked via org.eclipse.ui.startup
-    │     ├── (a) Detect SAP MCP server already running → no-op kickstart
-    │     │       Reflection: AdtMCPCorePlugin#mcpServer.httpServer != null
-    │     ├── (b) Otherwise: reflectively call
-    │     │       AdtMCPCorePlugin.getInstance().startMCPServer(port, token)
-    │     │       Token: -Darc1.mcp.token if set, else SecureRandom 24 bytes
-    │     │       Port:  -Darc1.mcp.port  if set, else 54322
-    │     │       Writes ~/.config/arc1/mcp-token.txt for the human user
-    │     └── (c) Schedule Arc1AutoLogin Job (2s delay)
+    ├── SAP: AdtMcpUIStartupHandler.earlyStartup()  ← org.eclipse.ui.startup
+    │     starts the server IFF  -DadtMcpServerPrefEnabled=true
+    │                       AND  preference "Enable ADT MCP Server" = true
+    │     → AdtMCPCorePlugin.startMCPServer(port, token, FileSystemMode.SFS)
+    │       (port/token from the ABAP → MCP Server preference page; default 2234)
+    │
+    ├── arc1: Arc1Startup.earlyStartup()  ← org.eclipse.ui.startup
+    │     ├── logs guidance (how to enable the server)
+    │     └── schedules Arc1AutoLogin Job (2s delay), unless -Darc1.mcp.autologin=false
     │             AdtLogonServiceFactory.createLogonService()
     │               .ensureLoggedOn(destData, null, monitor)
     │
-    └── SAP's ToolRegistrationService discovers extension contributions
-          ├── 8 SAP tools (from 4 SAP bundles)
+    └── On server start, SAP's ToolRegistrationService.registerStaticTools()
+          reads the adtMcpTools extension registry:
+          ├── SAP's own tools (from SAP bundles)
           └── arc1_sap_* tools (from com.arc1.mcp via plugin.xml)
                    ↓
           All registered with McpSyncServer.addTool(...)
 
 Runtime request:
     Copilot / Claude / Cursor
-        ↓ POST http://localhost:54322/mcp
+        ↓ POST http://localhost:2234/mcp   (port = whatever the preference says)
     DNSRebindingProtectionFilter → TokenAuthenticationFilter
         ↓
     HttpServletStreamableServerTransportProvider (Java MCP SDK)
@@ -47,6 +54,11 @@ Runtime request:
         ↓
     JSON-serialize → MCP tool result
 ```
+
+Note the two `org.eclipse.ui.startup` contributors (SAP's and ours) run in
+non-deterministic order — that's fine, because they're independent: SAP starts
+the server; we only contribute tools (read from the extension registry whenever
+the server starts) and pre-warm logon.
 
 ## Extension point
 
@@ -73,40 +85,39 @@ public interface IAdtMCPTool {
     String getInputSchema();   // valid JSON Schema string
     default String getOutputSchema();
     IAdtMcpToolCallResult execute(String jsonInput);
+    // 3.60 adds: default execute(String, IProgressMonitor) — delegates to execute(String)
 }
 ```
 
-This is the **same** mechanism SAP uses for their own 8 tools (which sit in 4
-different bundles outside `com.sap.adt.mcp.core`). We are simply bundle #5.
+This is the **same** mechanism SAP uses for its own tools. We are simply another
+contributing bundle. On 3.60, SAP's `ToolRegistrationService` invokes
+`execute(String, IProgressMonitor)`; its default delegates to our
+`execute(String)`, so our tools work unchanged.
 
-## Kickstart and forward-compat
+## Server activation (SAP-owned)
 
-`AdtMCPCorePlugin.startMCPServer(int port, String token)` exists in ADT 3.58 but
-SAP has not shipped a UI command, preference, or auto-start that calls it. We
-work around this by reflectively invoking it from `IStartup.earlyStartup()`.
+As of ADT 3.60 the server is a supported feature with its own activation surface
+in the new `com.sap.adt.mcp.core.ui` bundle:
 
-When SAP eventually ships their own activation switch, our kickstart path
-detects the already-running state and no-ops. The `mcpTool` extension
-contribution remains the canonical wiring path and is forward-compatible.
+- **Preference page** `AdtMcpPreferencePage` (*Preferences → ABAP Development →
+  MCP Server*): an *Enable ADT MCP Server* checkbox, a port field (default
+  `2234`), and a token field with a *Generate* button. Ticking the box and
+  clicking *Apply* calls `startMCPServer(port, token, SFS)` immediately
+  (auto-generating a token if the field is blank).
+- **Startup handler** `AdtMcpUIStartupHandler`: on boot, auto-starts the server
+  **only if** the VM flag `-DadtMcpServerPrefEnabled=true` is set **and** the
+  enable preference is on.
+- **Defaults** (`AdtMcpPreferences`): enabled = `false`, port = `2234`,
+  token = empty.
 
-Two known SAP-side quirks that the live forced-activation probe surfaced:
-
-1. **Thread context classloader NPE** — Equinox's legacy servlet registration
-   stores `Thread.currentThread().getContextClassLoader()` in a `Hashtable`,
-   which NPEs if it's null. We defensively pin the CL to the MCP bundle's CL
-   before calling `startMCPServer`.
-2. **`setDestinationId` early-return bug** — first call returns without
-   actually setting the destination. We bypass this entirely by:
-   - having `arc1_sap_search` take `destination` as a per-call argument,
-   - letting Eclipse's own destination registry get populated by
-     `IAdtLogonService.ensureLoggedOn(...)` rather than by `setDestination`.
-
-See `docs/research/` for the bytecode-level analysis behind these decisions.
+So the user enables the server once (preference + the VM flag for boot
+auto-start). This plugin does **not** call any of this — no reflection, no
+kickstart. See `docs/decisions.md` D9.
 
 ## Auto-login
 
-After kickstart, `Arc1AutoLogin.attempt(...)` schedules an Eclipse `Job` (2s
-delay so ADT finishes restoring projects) that:
+Independently of the server, `Arc1AutoLogin.attempt(...)` schedules an Eclipse
+`Job` (2s delay so ADT finishes restoring projects) that:
 
 1. Calls `AdtProjectServiceFactory.createProjectService().getAvailableAbapProjects()`.
 2. Picks the project whose destination ID matches `-Darc1.mcp.destination`,
@@ -117,51 +128,59 @@ delay so ADT finishes restoring projects) that:
    - Saved credentials in Eclipse keyring → silent login.
    - No saved credentials → standard ADT password dialog pops once.
 
-Disable via `-Darc1.mcp.autologin=false`.
+This pre-warms the destination so backend-touching tools succeed on the first
+call. It uses public ADT APIs only. Disable via `-Darc1.mcp.autologin=false`.
 
 ## Configuration knobs
 
-All via `-D` JVM args (typically added to `eclipse.ini` under `-vmargs`):
+The server's **port, token, and on/off** are SAP's (preference page +
+`-DadtMcpServerPrefEnabled=true`). This plugin adds only:
 
 | Property | Default | Purpose |
 |---|---|---|
-| `arc1.mcp.token` | random 24-byte base64 per restart | Pinned bearer token. Set this so MCP client configs don't need updating after restart. |
-| `arc1.mcp.port` | `54322` | Localhost port for the MCP server. |
 | `arc1.mcp.destination` | first available ABAP project | Destination ID to auto-login. |
 | `arc1.mcp.autologin` | `true` | Set to `false` to disable auto-login. |
-| `arc1.mcp.kickstart` | `true` | Set to `false` to wait for SAP's future activation switch instead of forcing the server up. |
 
 ## File layout
 
 ```
-com.arc1.mcp_0.1.0.jar
-├── META-INF/MANIFEST.MF         OSGi headers (Require-Bundle list)
-├── plugin.xml                   Extension contributions
+com.arc1.mcp_<version>.jar
+├── META-INF/MANIFEST.MF         OSGi headers (Require-Bundle: com.sap.adt.* [3.60.0,4.0.0))
+├── plugin.xml                   Extension contributions (11 mcpTool + startup hook)
 ├── com/arc1/mcp/
 │   ├── Arc1McpActivator.class   Plugin singleton + log accessor
-│   ├── Arc1Startup.class        IStartup: kickstart + token + autologin trigger
+│   ├── Arc1Startup.class        IStartup: guidance log + autologin trigger (no reflection)
 │   ├── Arc1AutoLogin.class      Background Job that calls ensureLoggedOn
-│   ├── Arc1SapSearchTool.class  arc1_sap_search — RIS quick search
+│   ├── AdtHttp.class            HTTP helper (GET + POST, 256 KB cap)
+│   ├── Arc1Sap*Tool.class       one class per MCP tool
 │   └── Json.class               no-dep JSON helpers
 ```
 
 ## Dependencies
 
-Compile-time and runtime via OSGi `Require-Bundle`:
+Compile-time and runtime via OSGi `Require-Bundle` (SAP bundles pinned to
+`[3.60.0,4.0.0)`):
 
 | Bundle | Why |
 |---|---|
-| `com.sap.adt.mcp.core` | `IAdtMCPTool`, `AdtMcpToolCallResultBuilder`, and (via reflection) `AdtMCPCorePlugin` |
+| `com.sap.adt.mcp.core` | `IAdtMCPTool`, `IAdtMcpToolCallResult`, `AdtMcpToolCallResultBuilder` (the tool contract) |
 | `com.sap.adt.ris.search` | `AdtRisQuickSearchFactory`, `IAdtRisQuickSearch` |
-| `com.sap.adt.tools.core` | `IAdtObjectReference` (EMF model type) |
+| `com.sap.adt.tools.core` | `AbapCore`, system info, `IAdtObjectReference` |
 | `com.sap.adt.tools.core.base` | `AdtProjectServiceFactory`, `IAbapProjectService` |
 | `com.sap.adt.project` | `IAdtCoreProject`, destination data accessor |
 | `com.sap.adt.destinations` | `AdtLogonServiceFactory`, `IAdtLogonService` |
 | `com.sap.adt.destinations.model` | `IDestinationData` |
-| `org.eclipse.core.runtime` | `Plugin` base, `Platform`, `IProgressMonitor`, status |
+| `com.sap.adt.communication` | `AdtSystemSessionFactory`, request/response/message types (the HTTP layer) |
+| `org.eclipse.core.runtime` | `Plugin` base, `IStatus`, status |
 | `org.eclipse.core.resources` | `IProject` (used by Eclipse adapter framework) |
 | `org.eclipse.core.jobs` | `Job` (auto-login runs async) |
 | `org.eclipse.equinox.common` | `NullProgressMonitor` |
 | `org.eclipse.ui` | `IStartup` |
 
-No third-party libraries. Build artifact is ~12 KB.
+Note: as of 3.60, `com.sap.adt.mcp.core` exports the tool-contract package with
+`x-friends` rather than `x-internal`. We are not on the friends list, but Eclipse
+does not enforce that at runtime in the default (non-strict) resolver mode, and
+`javac` ignores it — so the plugin resolves and compiles. It's a signal worth
+tracking, not a current breakage.
+
+No third-party libraries.

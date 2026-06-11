@@ -2,7 +2,7 @@
 #
 # Build com.arc1.mcp_0.1.0.jar and copy it into Eclipse ADT's dropins folder.
 #
-# Prereqs: ADT 3.58 installed under ~/eclipse/java-2025-09/Eclipse.app and the
+# Prereqs: ADT 3.60+ installed under ~/eclipse/java-2025-09/Eclipse.app and the
 # corresponding bundles cached in ~/.p2/pool/plugins.
 #
 set -euo pipefail
@@ -84,11 +84,12 @@ if [[ "$INSTALL" == "yes" ]]; then
         cp "$OUT" "$DROPINS/"
         echo "Installed to: $DROPINS/$OUT"
         echo ""
-        echo "Next: restart Eclipse with -clean (kills any prior MCP session):"
+        echo "Next: restart Eclipse with -clean to pick up the new bundle:"
         echo "  pkill -f 'Eclipse.app/Contents/MacOS/eclipse'"
         echo "  '$HOME/eclipse/java-2025-09/Eclipse.app/Contents/MacOS/eclipse' -clean &"
         echo ""
-        echo "Then check ~/.config/arc1/mcp-token.txt for the URL + bearer token."
+        echo "Then enable SAP's MCP server: Preferences -> ABAP Development -> MCP Server"
+        echo "(tick Enable, click Generate for a token, Apply). Token + port show there."
     else
         echo "ERROR: Eclipse dropins folder not found at $DROPINS" >&2
         exit 1

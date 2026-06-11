@@ -6,31 +6,39 @@
 
 **Use Claude, GitHub Copilot, Cursor, or any MCP-capable AI client to read your ABAP system — without leaving Eclipse.**
 
-Drop one JAR into your Eclipse `dropins/`, add 3 lines to `eclipse.ini`,
-restart, point your AI client at `http://localhost:54322/mcp` — done. Your AI
+Drop one JAR into your Eclipse `dropins/`, turn on SAP's built-in MCP server,
+restart, point your AI client at `http://localhost:2234/mcp` — done. Your AI
 can now search ABAP repositories, read source code, list transports, inspect
 service bindings, and more.
+
+> [!IMPORTANT]
+> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.4.0 builds
+> on SAP's supported MCP server, which first shipped an activation surface in
+> ADT 3.60. For ADT 3.58 / 3.59 use plugin version ≤ 0.3.x instead (those
+> reflectively woke the then-dormant server).
 
 ---
 
 ## What this actually does
 
-SAP shipped a **hidden** MCP server inside ABAP Development Tools 3.58+ and
-hasn't turned it on. This plugin:
+As of **ADT 3.60**, SAP ships a *supported* MCP server inside Eclipse-for-ABAP.
+It's **off by default** and, on its own, only exposes SAP's own MCP tools. This
+plugin:
 
-1. **Turns it on** (auto-starts the dormant SAP MCP server when Eclipse boots).
-2. **Adds 11 extra tools** so the server can do more than SAP's 8 built-ins.
-3. **Logs you in** automatically to your ABAP project so the AI can reach the
-   backend.
+1. **Adds 11 read-only ABAP tools** via SAP's documented Eclipse extension
+   point `com.sap.adt.mcp.core.adtMcpTools` — search, read source, object
+   metadata, transports, and authenticated HTTP escape hatches.
+2. **Logs you in** automatically to your ABAP project (optional) so the AI can
+   reach the backend on the first call.
 
-You get a working `http://localhost:54322/mcp` endpoint that AI clients
-connect to. **19 tools total** (8 from SAP + 11 from this plugin).
+You enable SAP's server once (a preference toggle + one `eclipse.ini` line);
+this plugin's tools then register on it automatically every time it starts.
+**No reflection, no internal hacks** — just a standard tool contribution.
 
 > [!NOTE]
-> This is a community plugin, not an official SAP product. SAP's MCP support
-> is officially "disabled and cannot be activated" — we activate it locally,
-> on your own machine, via the documented Eclipse extension point. When SAP
-> ships their own activation switch, this plugin keeps working unchanged.
+> This is a community plugin, not an official SAP product. It uses only the
+> documented extension point. SAP owns the server lifecycle (start/stop, port,
+> token); this plugin only contributes tools.
 
 ---
 
@@ -38,14 +46,14 @@ connect to. **19 tools total** (8 from SAP + 11 from this plugin).
 
 ### What you need first
 
-- **Eclipse 2025-09 (4.39)** with **ADT 3.58** installed
+- **Eclipse for ABAP with ADT 3.60+** (check via *Help → Installation Details*)
 - **JDK 21** — comes bundled with Eclipse-for-ABAP, no separate install needed
 - An **ABAP project** that you can log into (this plugin connects through it)
 
 ### Step 1: Download the plugin JAR
 
 From the [latest release](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases/latest),
-grab `com.arc1.mcp_0.3.0.jar` (45 KB).
+grab `com.arc1.mcp_0.4.0.jar`.
 
 ### Step 2: Drop it into Eclipse's `dropins/` folder
 
@@ -58,24 +66,28 @@ grab `com.arc1.mcp_0.3.0.jar` (45 KB).
 > If your Eclipse is somewhere else, look for the `dropins/` folder **next to
 > your Eclipse executable** (or one level up on macOS — inside the `.app`).
 
-### Step 3: Edit `eclipse.ini`
+### Step 3: Add one line to `eclipse.ini`
 
-Find `eclipse.ini` (it sits next to the Eclipse executable, or inside the
-macOS app bundle at `Contents/Eclipse/eclipse.ini`). Add **3 lines at the
-very bottom**, after the existing `-vmargs` block:
+Find `eclipse.ini` (next to the Eclipse executable, or inside the macOS app
+bundle at `Contents/Eclipse/eclipse.ini`). Add this line at the **very bottom**,
+after the existing `-vmargs` block:
 
 ```ini
--Darc1.mcp.token=PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN
--Darc1.mcp.destination=YOUR_DESTINATION_ID
--Darc1.mcp.port=54322
+-DadtMcpServerPrefEnabled=true
 ```
 
-Replace:
-- `PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN` → anything you invent. This is a
-  password between Eclipse and your AI client. Examples: `arc1-mybirthday42`,
-  `7Hs2KqRpL9vWaN6T`. **Don't share it.**
-- `YOUR_DESTINATION_ID` → the name of your ABAP project. See [how to find
-  it](#how-to-find-your-destination-id) just below.
+This is SAP's flag that makes the MCP server **auto-start on every boot**.
+Without it, the server only runs while you keep the preference applied in the
+current session.
+
+*(Optional)* if you want this plugin to auto-log-into a specific ABAP project,
+also add:
+
+```ini
+-Darc1.mcp.destination=YOUR_DESTINATION_ID
+```
+
+See [how to find your destination ID](#how-to-find-your-destination-id) below.
 
 ### Step 4: Restart Eclipse with `-clean`
 
@@ -92,23 +104,37 @@ pkill -f eclipse
 > Windows: close Eclipse normally, then run `eclipse.exe -clean` from a
 > command prompt. The `-clean` flag is only needed **once** per plugin update.
 
-### Step 5: Verify it started
+### Step 5: Turn on the MCP server (SAP preference page)
 
-In Eclipse: **Window → Show View → Error Log**. You should see:
+In Eclipse: **Preferences → ABAP Development → MCP Server**.
+
+1. Tick **Enable ADT MCP Server**.
+2. Leave **Token** blank and click **Generate** (or type your own long string).
+3. **Port** defaults to `2234` — change it only if that port is taken.
+4. Click **Apply**. You should see *"ADT MCP Server started successfully."*
+
+**Copy the Token value** — you'll paste it into your AI client in the next
+section. (SAP shows it right there on the page; this plugin does not write a
+token file.)
+
+### Step 6: Verify it started
+
+**Window → Show View → Error Log**. You should see (from SAP and from us):
 
 ```
-ARC-1 MCP extension: MCP server started on http://localhost:54322/mcp
+ADT MCP Server started successfully.
+ARC-1 MCP extension: tool contributions registered. The ADT MCP server is started by SAP ...
 ARC-1 MCP extension: Auto-login succeeded for destination: YOUR_DESTINATION_ID
 ```
 
-If you see those, **you're done with the plugin install**. Now connect a
-client.
+If you see those, **you're done with the plugin install**. Now connect a client.
 
 ---
 
 ## Connect your AI client
 
-Pick **one** based on what you use:
+Use the **port and token from the preference page** (default port `2234`).
+Pick **one** client below:
 
 <details>
 <summary><b>GitHub Copilot (inside Eclipse or VS Code)</b></summary>
@@ -119,10 +145,10 @@ Pick **one** based on what you use:
 {
   "servers": {
     "mcp-abap-server": {
-      "url": "http://localhost:54322/mcp",
+      "url": "http://localhost:2234/mcp",
       "requestInit": {
         "headers": {
-          "Authorization": "Bearer PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN"
+          "Authorization": "Bearer PASTE-TOKEN-FROM-PREFERENCE-PAGE"
         }
       }
     }
@@ -130,17 +156,15 @@ Pick **one** based on what you use:
 }
 ```
 
-Use the **same token** you put in `eclipse.ini`. Click *Apply*.
-
-Test it: open Copilot Chat, ask "use abap mcp server to search for ZARC1*".
+Click *Apply*. Test it: open Copilot Chat, ask "use abap mcp server to search for ZARC1*".
 </details>
 
 <details>
 <summary><b>Claude Code (CLI)</b></summary>
 
 ```bash
-claude mcp add abap http://localhost:54322/mcp \
-  --header "Authorization: Bearer PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN" \
+claude mcp add abap http://localhost:2234/mcp \
+  --header "Authorization: Bearer PASTE-TOKEN-FROM-PREFERENCE-PAGE" \
   --transport http
 ```
 
@@ -152,8 +176,8 @@ Test it: `claude` and ask "list my ABAP destinations".
 
 **Settings → MCP Servers → Add Server**:
 - Transport: **HTTP**
-- URL: `http://localhost:54322/mcp`
-- Headers: `Authorization: Bearer PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN`
+- URL: `http://localhost:2234/mcp`
+- Headers: `Authorization: Bearer PASTE-TOKEN-FROM-PREFERENCE-PAGE`
 </details>
 
 <details>
@@ -168,8 +192,8 @@ Claude Desktop only supports stdio MCP servers natively. Bridge it with
     "abap": {
       "command": "npx",
       "args": [
-        "mcp-remote", "http://localhost:54322/mcp",
-        "--header", "Authorization: Bearer PICK-A-LONG-RANDOM-STRING-OF-YOUR-OWN"
+        "mcp-remote", "http://localhost:2234/mcp",
+        "--header", "Authorization: Bearer PASTE-TOKEN-FROM-PREFERENCE-PAGE"
       ]
     }
   }
@@ -190,7 +214,7 @@ project **is** the destination ID. Copy it.
 
 Other ways:
 - Right-click ABAP project → *Properties → ABAP Project*
-- Once the plugin is running, call `abap_list_destinations` (SAP's built-in
+- Once the server is running, call `abap_list_destinations` (SAP's built-in
   tool) from your AI client and read the IDs back
 
 If you skip `-Darc1.mcp.destination=...` entirely, the plugin auto-picks the
@@ -201,55 +225,45 @@ projects.
 
 ## Troubleshooting
 
-### "Add Client Registration Details" dialog pops up on Eclipse startup
+### The MCP server never starts
 
-Your AI client's saved token doesn't match what Eclipse is serving. Cancel
-the dialog. Update the `Authorization: Bearer ...` header in your client's
-MCP config to match the value of `-Darc1.mcp.token=...` in `eclipse.ini`.
+- Make sure you ticked **Enable ADT MCP Server** under *Preferences → ABAP
+  Development → MCP Server* and clicked **Apply**.
+- For auto-start on boot, confirm `-DadtMcpServerPrefEnabled=true` is in
+  `eclipse.ini` (under `-vmargs`) and you restarted. Without that flag, the
+  server does not come back after an Eclipse restart.
+- **Port already taken** by another process: change the port on the preference
+  page (e.g. `2235`) and update the URL in your AI client config.
 
-### Error Log shows "ARC-1 MCP extension: failed to start MCP server"
+### `arc1_sap_*` tools don't show up in `tools/list` (only SAP's tools do)
 
-Possible causes, in likely order:
-- **Port 54322 already taken** by another process. Change `-Darc1.mcp.port`
-  to something else (e.g. `54330`) in `eclipse.ini`, and update the URL in
-  your AI client config.
-- **Multiple plugin versions** in `dropins/`. Delete all `com.arc1.mcp_*.jar`
-  files except the newest one, restart Eclipse with `-clean`.
-- **Eclipse / ADT version mismatch**. This plugin is built for ADT 3.58.
-  Check `Help → Installation Details` for your ADT version.
+The plugin bundle didn't load. Check **Help → About Eclipse → Installation
+Details → Plug-ins** for `com.arc1.mcp`. If it's missing:
+- Confirm the JAR is in `dropins/` (not a subfolder), then restart with `-clean`.
+- Confirm your ADT version is **3.60+** — this plugin refuses to load on older
+  ADT (the OSGi requirement is `[3.60.0,4.0.0)`).
+
+### Tool calls return HTTP 401
+
+The token your AI client sent doesn't match the one on the preference page.
+Open *Preferences → ABAP Development → MCP Server*, copy the **Token** value,
+and update the `Authorization: Bearer ...` header in your client config.
+Restart your AI client after changing its config. If the header is missing
+entirely, your client isn't sending `Authorization` at all — it must be named
+exactly `Authorization` with a value starting `Bearer ` (with a space).
 
 ### `arc1_sap_search` returns "Unable to initialize the ADT Discovery"
 
 You're not logged into the ABAP project yet. In **Project Explorer**,
 expand your ABAP project — Eclipse will prompt for the password. Tick "Save
-password" so future restarts log in silently.
-
-### Tool calls return HTTP 401 "Authentication failed: Invalid token"
-
-The token your AI client sent doesn't match `-Darc1.mcp.token`. Two cases:
-1. You set the token in `eclipse.ini` but forgot to update the client config.
-2. You changed the token in `eclipse.ini` but the client cached the old one.
-
-Restart your AI client after updating its config.
-
-### Tool calls return HTTP 401 "Missing or invalid Authorization header"
-
-Your client isn't sending the `Authorization: Bearer ...` header at all.
-Re-check the client config — the header has to be named exactly
-`Authorization` and the value starts with `Bearer ` (with a space).
-
-### Nothing in Error Log, no `~/.config/arc1/mcp-token.txt` file
-
-The plugin didn't load at all. Check **Help → About Eclipse → Installation
-Details → Plug-ins** tab — search for `com.arc1.mcp`. If it's missing:
-- Confirm the JAR is in `dropins/` (not in a subfolder)
-- Restart Eclipse with `-clean` (not just normal restart)
+password" so future restarts log in silently. (Or set
+`-Darc1.mcp.destination=...` so this plugin pre-logs-in for you.)
 
 ---
 
-## What you get — the 19 tools
+## What you get — the tools
 
-### Plugin tools (11)
+### Plugin tools (11, all read-only)
 
 **Search + metadata** (v0.1.0)
 
@@ -277,7 +291,11 @@ Details → Plug-ins** tab — search for `com.arc1.mcp`. If it's missing:
 | `arc1_sap_list_transports` | List transports with username / status / type filters. |
 | `arc1_sap_http_post` | Authenticated POST to any `/sap/bc/adt/...` endpoint (escape hatch). |
 
-### SAP built-ins this plugin activates (8)
+### SAP's own MCP tools (alongside these)
+
+When the server is running, SAP also contributes its own tools (the exact set
+depends on which ADT features are installed). On a typical S/4 ADT install that
+includes:
 
 `abap_list_destinations`, `abap_generators-list_generators`,
 `abap_generators-get_schema`, `abap_generators-generate_objects`,
@@ -285,16 +303,22 @@ Details → Plug-ins** tab — search for `com.arc1.mcp`. If it's missing:
 `abap_business_services-fetch_services`,
 `abap_business_services-fetch_service_information`.
 
+These are SAP's, not this plugin's — they ship and register on their own.
+
 ---
 
 ## Verify everything works (full smoke test)
 
-If you have the source checked out:
+If you have the source checked out, pass the server URL + token from the
+preference page via environment variables:
 
 ```bash
 git clone https://github.com/marianfoo/arc1-adt-abap-mcp-ext.git
 cd arc1-adt-abap-mcp-ext
-./scripts/smoke-test.sh A4H_001_marian_en_1   # use your destination ID
+
+export ARC1_MCP_URL=http://localhost:2234/mcp     # port from the preference page
+export ARC1_MCP_TOKEN=PASTE-TOKEN-FROM-PREFERENCE-PAGE
+./scripts/smoke-test.sh A4H_001_marian_en_1       # use your destination ID
 ```
 
 This exercises all 11 plugin tools through the MCP protocol end-to-end and
@@ -304,15 +328,15 @@ prints the responses.
 
 ## Configuration reference
 
-All set via JVM `-D` flags in `eclipse.ini`:
+The MCP server's **port, token, and on/off** live in SAP's preference page
+(*Preferences → ABAP Development → MCP Server*) and the `eclipse.ini` flag
+`-DadtMcpServerPrefEnabled=true`. This plugin adds only two optional knobs,
+set via JVM `-D` flags in `eclipse.ini`:
 
 | Property | Default | Purpose |
 |---|---|---|
-| `arc1.mcp.token` | random per restart | Bearer token. Pin it once so client configs stay valid. |
-| `arc1.mcp.port` | `54322` | Port for the local MCP server. |
 | `arc1.mcp.destination` | first ABAP project | Which destination to auto-login. |
 | `arc1.mcp.autologin` | `true` | Set `false` to skip auto-login. |
-| `arc1.mcp.kickstart` | `true` | Set `false` to wait for SAP's future activation switch. |
 
 ---
 
@@ -325,8 +349,8 @@ cd arc1-adt-abap-mcp-ext
 INSTALL=yes ./build.sh    # also copies to your local Eclipse dropins/
 ```
 
-No Maven, no Tycho. `build.sh` uses the JDK and SAP ADT JARs from your local
-Eclipse install (`~/.p2/pool/plugins/`). Build time: ~3 seconds.
+No Maven, no Tycho. `build.sh` uses the JDK and SAP ADT JARs (3.60+) from your
+local Eclipse install (`~/.p2/pool/plugins/`). Build time: ~3 seconds.
 
 ---
 
@@ -338,11 +362,11 @@ Eclipse install (`~/.p2/pool/plugins/`). Build time: ~3 seconds.
 - **Implementation plans** (one per release): [docs/plans/](docs/plans/)
 
 TL;DR: SAP designed the MCP server to be extended via the standard Eclipse
-extension point `com.sap.adt.mcp.core.adtMcpTools`. Our plugin contributes
-11 `<mcpTool class="..."/>` entries. We also reflectively call
-`AdtMCPCorePlugin.startMCPServer(port, token)` to wake the dormant server —
-the only "unsupported" part of the plugin, and one that auto-no-ops once
-SAP ships their own activation switch.
+extension point `com.sap.adt.mcp.core.adtMcpTools`. This plugin contributes
+11 `<mcpTool class="..."/>` entries, which SAP's own `ToolRegistrationService`
+picks up whenever the server starts. SAP owns activation (the preference page
++ `-DadtMcpServerPrefEnabled=true`); this plugin never touches the server
+lifecycle.
 
 ---
 
@@ -351,23 +375,24 @@ SAP ships their own activation switch.
 ### Is this an official SAP product?
 No. It's a community plugin. See the note at the top.
 
+### Why do I need ADT 3.60?
+ADT 3.60 is the first release where SAP shipped a way to turn the MCP server on
+(a preference page + startup flag) and a stable `startMCPServer` signature.
+Earlier releases (3.58/3.59) had the server but no activation surface — plugin
+versions ≤ 0.3.x handled those by reflectively waking it. 0.4.0 drops that and
+relies on SAP's supported activation, so it's 3.60+ only.
+
 ### Does this read or modify my source code?
-The 11 tools this plugin adds are **read-only**. The 8 SAP-shipped tools
-that the plugin activates *do* include mutating workflows
-(`abap_generators-generate_objects`, `abap_transport-create`). Those use
-your normal SAP authorizations — same as if you used the equivalent ADT UI
-action.
+The 11 tools this plugin adds are **read-only**. SAP's own MCP tools may include
+mutating workflows (`abap_generators-generate_objects`, `abap_transport-create`).
+Those use your normal SAP authorizations — same as the equivalent ADT UI action.
 
 ### What about credentials / security?
 - The MCP server binds to `localhost` only (not reachable from the network).
-- Every request requires the bearer token you set in `eclipse.ini`.
+- Every request requires the bearer token set on SAP's preference page.
 - SAP backend calls use your existing ABAP-project authentication (cookies
   / SSO / saved password).
 - No telemetry, no outbound HTTP from this plugin.
-
-### Will this break when SAP ships official MCP activation?
-No. The kickstart code detects an already-running server and skips. The
-`<mcpTool>` contributions stay valid — same extension point either way.
 
 ### How do I add my own tool?
 Implement `com.sap.adt.mcp.core.IAdtMCPTool` in your own bundle and contribute

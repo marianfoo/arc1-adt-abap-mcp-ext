@@ -6,7 +6,7 @@ welcome.
 ## Dev environment
 
 You need:
-- Eclipse for ABAP 2025-09 (4.39) with ADT 3.58 installed
+- Eclipse for ABAP with ADT 3.60+ installed
 - JDK 21 (the one bundled with Eclipse works)
 - Bash
 
@@ -30,9 +30,14 @@ INSTALL=yes ./build.sh
 
 ## Test
 
+First enable SAP's MCP server (*Preferences → ABAP Development → MCP Server* →
+tick Enable, click Generate for a token, Apply), then pass its URL + token to
+the smoke test via env vars:
+
 ```bash
-./scripts/smoke-test.sh A4H_001_marian_en_1
-# replace A4H_... with your destination ID
+export ARC1_MCP_URL=http://localhost:2234/mcp     # port from the preference page
+export ARC1_MCP_TOKEN=<token from the preference page>
+./scripts/smoke-test.sh A4H_001_marian_en_1       # replace with your destination ID
 ```
 
 The smoke test exercises every plugin tool end-to-end against your running

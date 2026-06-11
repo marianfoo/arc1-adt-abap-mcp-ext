@@ -35,6 +35,11 @@ is acceptable for adding new tools during development.
 
 ## D3. Reflectively kickstart the dormant MCP server (instead of waiting for SAP)
 
+> **Superseded by [D9](#d9-pure-tool-provider-on-adt-360-drop-the-kickstart) as of
+> v0.4.0 / ADT 3.60.** SAP shipped the activation surface this decision was
+> waiting for, so the reflective kickstart was removed. Kept here for history —
+> it still describes how versions ≤ 0.3.x behave on ADT 3.58/3.59.
+
 **Decision**: `Arc1Startup.earlyStartup()` reflectively calls
 `AdtMCPCorePlugin.getInstance().startMCPServer(port, token)` to wake the dormant
 server.
@@ -79,6 +84,11 @@ call. No per-server-instance destination lock-in.
 
 ## D6. Pinned bearer token via system property, not file-based
 
+> **Superseded by [D9](#d9-pure-tool-provider-on-adt-360-drop-the-kickstart) as of
+> v0.4.0 / ADT 3.60.** The token is now SAP's concern — it's set/generated on the
+> *ABAP Development → MCP Server* preference page. This plugin no longer reads
+> `-Darc1.mcp.token` or writes a token file. Kept for history (applies to ≤ 0.3.x).
+
 **Decision**: `Arc1Startup` reads `-Darc1.mcp.token=...` first, generates a
 random token only if not set.
 
@@ -108,3 +118,54 @@ is trivially rotatable.
 - Each MCP tool's I/O is tiny flat JSON. Hand-coding is ~80 lines and avoids
   the dependency.
 - The build script becomes trivial: `javac` + `jar`, no Maven/Tycho/Ivy.
+
+## D9. Pure tool-provider on ADT 3.60 (drop the kickstart)
+
+**Decision**: As of v0.4.0 (ADT 3.60+), `Arc1Startup` no longer starts the MCP
+server. The plugin contributes tools via the extension point and nothing else
+touches the server lifecycle. All reflection into
+`com.sap.adt.mcp.core.internal.AdtMCPCorePlugin` (the `startMCPServer` kickstart
+and the `peekRunningPort` field-peek) is removed. This **supersedes [D3](#d3-reflectively-kickstart-the-dormant-mcp-server-instead-of-waiting-for-sap)**.
+
+**Why**: ADT 3.60 ships the activation surface D3 was working around:
+
+- A new bundle `com.sap.adt.mcp.core.ui` with an *ABAP Development → MCP Server*
+  preference page (`AdtMcpPreferencePage`) — enable checkbox, port, token, a
+  *Generate* button; ticking + Apply starts the server immediately.
+- A startup handler `AdtMcpUIStartupHandler` (an `org.eclipse.ui.startup`
+  contributor) that auto-starts the server on boot **iff** the VM flag
+  `-DadtMcpServerPrefEnabled=true` is set **and** the enable preference is on.
+- Defaults (`AdtMcpPreferences.setPreferenceDefaults`): enabled = `false`,
+  port = `2234`, token = empty. So the server is supported but **off by default**,
+  double-gated.
+
+Two facts made keeping the kickstart untenable on 3.60:
+
+1. **The signature changed.** `startMCPServer(int, String)` became
+   `startMCPServer(int, String, IAdtMcpEnvironmentInfo.FileSystemMode)`. The old
+   reflective call threw `NoSuchMethodException` at runtime (invisible to the
+   compiler, since the call is reflective).
+2. **The package was locked down.** `com.sap.adt.mcp.core` went from
+   `x-internal:=true` to `x-friends:="com.sap.adt.atc.ui, …"` — a clear "external
+   code should not bind this" signal (not runtime-enforced by default, but a
+   standing risk if SAP turns on strict resolution).
+
+**Alternatives considered**:
+- *Fix the kickstart for 3.60* (3-arg call + `FileSystemMode.SFS`, the value
+  SAP's own UI passes). Works, but keeps reflecting into a now-`x-friends`
+  internal package to do something SAP now supports through a preference. Rejected
+  in favor of going fully standard.
+- *Standard-first hybrid* (auto-start only when SAP's native activation is off).
+  More moving parts than the value justifies for a single-user desktop plugin.
+
+**Cost we accepted**: the server no longer auto-starts from just dropping the
+JAR. Users enable SAP's server once (preference toggle + `-DadtMcpServerPrefEnabled=true`).
+In exchange the plugin is fully supported-surface-only: no reflection, smaller
+attack/break surface, and it can't fight SAP over the port or token (D-note:
+SAP's `ADTMCPServer.start()` stops and re-binds if asked to start on a different
+port than the one already running — exactly the clobbering we now avoid by not
+starting it at all).
+
+**What did *not* change**: the `<mcpTool>` extension point, tool-name validation
+(`^[A-Za-z0-9_-]+$`), and `IAdtMCPTool.execute(String)` are all unchanged on
+3.60, so every tool keeps working as-is. See `docs/plans/06-v0.4-pure-tool-provider.md`.
