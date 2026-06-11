@@ -5,29 +5,37 @@ Eclipse plugin in this repo). Read this first.
 
 ## Project goal
 
-**Activate and extend SAP's dormant Model Context Protocol (MCP) server
-inside Eclipse-for-ABAP**, so AI clients (Claude Code, GitHub Copilot,
+**Extend SAP's Model Context Protocol (MCP) server inside Eclipse-for-ABAP**
+with extra read-only tools, so AI clients (Claude Code, GitHub Copilot,
 Cursor, Claude Desktop) can read your ABAP system without any extra process.
 
-The user installs one JAR, edits 3 lines in `eclipse.ini`, restarts Eclipse
-once. From then on, an authenticated MCP endpoint is live at
-`http://localhost:54322/mcp` whenever Eclipse is running.
+Requires **ADT 3.60+**, where SAP ships the MCP server as a supported feature.
+The user installs one JAR, turns SAP's server on once (the *ABAP Development →
+MCP Server* preference + `-DadtMcpServerPrefEnabled=true` in `eclipse.ini`),
+and restarts. From then on, this plugin's tools register on SAP's authenticated
+MCP endpoint (default `http://localhost:2234/mcp`) whenever the server runs.
 
 ### Why this exists
 
-SAP ships an MCP server in ADT 3.58+ but hasn't turned it on
-(officially "disabled and cannot be activated"). The implementation is
-complete, just dormant. SAP also exposes a public Eclipse extension point
-`com.sap.adt.mcp.core.adtMcpTools` for contributing extra tools. This
-plugin does two things:
+SAP ships the MCP server inside ADT. In 3.58/3.59 it was dormant with no
+activation surface; **as of ADT 3.60 it is a supported feature** with its own
+preference page (*ABAP Development → MCP Server*) and a startup flag
+(`-DadtMcpServerPrefEnabled=true`) — but it's **off by default** and, on its
+own, only carries SAP's own tools. SAP exposes a public Eclipse extension point
+`com.sap.adt.mcp.core.adtMcpTools` for contributing extra tools. This plugin
+does exactly one thing:
 
-1. **Reflectively kickstart** `AdtMCPCorePlugin.startMCPServer(port, token)`
-   on Eclipse workbench startup, waking the dormant server.
-2. **Contribute extra tools** via the documented extension point.
+1. **Contribute extra tools** via that documented extension point. SAP's own
+   `ToolRegistrationService` registers them whenever the server starts.
 
-When SAP eventually ships their own activation switch, our reflective
-kickstart auto-no-ops (we detect `mcpServer.httpServer != null` and skip).
-The extension contributions stay valid — same extension point, same MCP SDK.
+(It also optionally pre-warms the ABAP project logon so tools work on the first
+call — public API, not a hack.)
+
+Earlier versions (≤ 0.3.x) also reflectively kickstarted the dormant 3.58
+server. ADT 3.60 made that both unnecessary (SAP ships activation) and broken
+(the `startMCPServer` signature changed to take a `FileSystemMode`), so v0.4.0
+removed it — the plugin no longer touches the server lifecycle. See
+`docs/decisions.md` D9 (supersedes D3).
 
 ### Non-goals
 
@@ -37,8 +45,8 @@ This plugin is intentionally **Eclipse-bound**. It is NOT trying to be:
 - A managed multi-user service with admin policy ceilings, audit, BTP
   deployment (also ARC-1 territory).
 - A write/activate platform — mutating tools belong in SAP's own MCP
-  surface (`abap_transport-create`, `abap_generators-generate_objects`)
-  which this plugin already activates.
+  surface (`abap_transport-create`, `abap_generators-generate_objects`),
+  which SAP ships and registers itself.
 
 If a task is "centralized management", "BTP", or "non-Eclipse" — point the
 user at ARC-1 instead.
@@ -49,15 +57,19 @@ user at ARC-1 instead.
 Eclipse workbench startup
   │
   ├─ OSGi resolves bundles (incl. com.arc1.mcp from dropins/)
+  │     com.arc1.mcp requires com.sap.adt.* [3.60.0,4.0.0)
+  │
+  ├─ SAP's AdtMcpUIStartupHandler.earlyStartup() (via org.eclipse.ui.startup)
+  │   └─ starts the server IF -DadtMcpServerPrefEnabled=true AND pref enabled
+  │        → AdtMCPCorePlugin.startMCPServer(port, token, FileSystemMode.SFS)
   │
   ├─ Arc1Startup.earlyStartup()  (via org.eclipse.ui.startup)
-  │   ├─ if mcpServer.httpServer != null → no-op (SAP started it first)
-  │   ├─ else: reflection → AdtMCPCorePlugin.startMCPServer(port, token)
-  │   └─ schedule Arc1AutoLogin Job (2s delay)
+  │   ├─ log guidance (how to enable the server)
+  │   └─ schedule Arc1AutoLogin Job (2s delay), unless -Darc1.mcp.autologin=false
   │
-  └─ SAP's ToolRegistrationService discovers all
-       <mcpTool class="..."/> extension contributions and addTool()s them
-       on the McpSyncServer (Java MCP SDK).
+  └─ On server start, SAP's ToolRegistrationService discovers all
+       <mcpTool class="..."/> extension contributions (SAP's + ours) and
+       addTool()s them on the McpSyncServer (Java MCP SDK).
 ```
 
 Request flow when a client calls our tool:
@@ -83,7 +95,7 @@ arc1-mcp-ext/
 ├── META-INF/MANIFEST.MF         OSGi bundle headers
 ├── src/com/arc1/mcp/
 │   ├── Arc1McpActivator         OSGi Plugin singleton + log
-│   ├── Arc1Startup              IStartup; kickstart + autologin trigger
+│   ├── Arc1Startup              IStartup; guidance log + autologin trigger
 │   ├── Arc1AutoLogin            Background Job, ensureLoggedOn
 │   ├── AdtHttp                  HTTP helper (GET + POST, 256KB cap)
 │   ├── Json                     no-dep JSON helpers
@@ -93,8 +105,8 @@ arc1-mcp-ext/
 │   └── finalize-readme.sh       swap repo URL placeholders
 ├── docs/
 │   ├── architecture.md          deeper than this file
-│   ├── decisions.md             non-obvious design choices (D1–D8)
-│   ├── plans/                   01–05; one per release
+│   ├── decisions.md             non-obvious design choices (D1–D9)
+│   ├── plans/                   01–06; one per release
 │   ├── research/                bytecode analysis pointers
 │   └── release-readiness-review.md
 ├── .github/workflows/
@@ -145,8 +157,9 @@ public class Arc1SapXxxTool implements IAdtMCPTool {
 
 **MUST NOT**:
 - Add third-party dependencies (no Jackson, no Gson, no slf4j). Use `Json`.
-- Use packages named `*.internal.*` without isolating via reflection in one
-  central place (currently only `Arc1Startup` does this, for the kickstart).
+- Use packages named `*.internal.*`, or reflect into SAP internals at all. As
+  of v0.4.0 the plugin touches zero SAP-internal API — keep it that way; use
+  the documented extension point and public APIs only.
 - Forget to update `plugin.xml` with the new `<mcpTool class="..."/>` line.
   A tool not in `plugin.xml` is invisible to the extension registry.
 - Forget to update `scripts/smoke-test.sh` to cover the new tool.
@@ -202,17 +215,20 @@ locally and upload manually. See `docs/plans/03-publishing.md` for the
 These are not optional — break them and the plugin will eventually break
 silently:
 
-1. **`Arc1Startup.peekRunningPort` must no-op if the MCP server is
-   already running.** When SAP ships their own activation switch,
-   their code will likely run first. Clobbering their token or
-   restarting the Jetty server would break SAP's intended UX.
-2. **`x-friends`/`x-internal` packages**: only `com.sap.adt.mcp.core.internal`
-   is touched, and only via reflection in `Arc1Startup.kickstartMcpServer`.
-   Don't add more reflective entries without strong justification.
-3. **`Require-Bundle: ...;bundle-version="[3.58.0,4.0.0)"`** — keep the
-   version range scoped to the major. When ADT 4.x ships, internal
-   packages will likely move; we want OSGi to refuse to load us rather
-   than crash at runtime.
+1. **Never start, stop, or reconfigure the MCP server.** As of 3.60 SAP owns
+   the server lifecycle (preference page + `AdtMcpUIStartupHandler`). This
+   plugin only contributes tools and pre-warms logon. Re-introducing a
+   kickstart would fight SAP over the port/token — `ADTMCPServer.start()`
+   stops and re-binds if asked to start on a different port than the one
+   already running.
+2. **No reflection into SAP internals.** v0.4.0 removed the last reflective
+   call. Don't reintroduce `*.internal.*` access (or use of the now
+   `x-friends`-scoped `com.sap.adt.mcp.core` package beyond the compile-time
+   `IAdtMCPTool` tool contract) without strong justification.
+3. **`Require-Bundle: com.sap.adt.*;bundle-version="[3.60.0,4.0.0)"`** — keep
+   the floor at the supported ADT version (3.60) and scoped to the major.
+   When ADT 4.x ships, internal packages will likely move; we want OSGi to
+   refuse to load us rather than crash at runtime.
 
 ## Where each design choice lives
 
@@ -221,14 +237,21 @@ When in doubt, check `docs/decisions.md` first. Highlights:
 - **D1**: Wrap Eclipse Java APIs, don't reimplement ADT REST clients (in
   v0.2+ we *did* add an HTTP layer, but it uses Eclipse's `ISystemSession`
   for auth — still inside-Eclipse).
-- **D3**: Reflectively kickstart the dormant server vs. waiting for SAP.
+- **D3**: Reflectively kickstart the dormant server (history; **superseded by D9**).
 - **D4**: Tools take `destination` per-call, not via `setDestination(...)` —
   works around the early-return bug + supports multi-destination clients.
 - **D8**: No third-party deps. `Json.java` is hand-rolled.
+- **D9**: ADT 3.60 ships supported activation → drop the kickstart, become a
+  pure tool-provider (zero reflection into SAP internals).
 
 ## Roadmap (not commitments)
 
-### v0.4 (planned)
+### Shipped in v0.4.0
+- **ADT 3.60 migration**: dropped the reflective kickstart; pure tool-provider
+  on SAP's now-supported server. This is what the "v0.4" milestone became — it
+  pre-empted the tool additions originally sketched below.
+
+### Next (the original "v0.4" tool ideas, still planned)
 - `arc1_sap_where_used` — needs one Eclipse HTTP trace capture to confirm
   the XML body shape of `/sap/bc/adt/repository/informationsystem/whereused`.
 - `arc1_sap_object_structure` — same situation, URI literal not cleanly
@@ -239,7 +262,6 @@ When in doubt, check `docs/decisions.md` first. Highlights:
   `arc1_sap_object_revisions`, eventually `arc1_sap_run_unit_tests`.
   Bigger investment (~60 lines for the sync helper + UI thread handling
   + IFile lifecycle).
-- Compatibility with ADT 3.60+ when SAP ships it.
 - Optional Eclipse Marketplace listing (currently GitHub Releases only).
 
 ### Out of scope (will not ship)
@@ -256,25 +278,29 @@ When in doubt, check `docs/decisions.md` first. Highlights:
 
 - **SAP ADT MCP deep dive** (bytecode + plugin.xml of SAP's own bundles):
   in the ARC-1 repo at `docs/research/adt-eclipse-mcp-deep-dive-2026-05-22.md`.
-- **Forced-activation probe** (proves the kickstart works end-to-end):
-  ARC-1 `docs/research/adt-mcp-forced-activation-2026-05-22.md`.
+- **Forced-activation probe** (historical; how the ≤0.3.x kickstart was proven
+  on ADT 3.58): ARC-1 `docs/research/adt-mcp-forced-activation-2026-05-22.md`.
 - **Local Eclipse install** for testing:
   `~/eclipse/java-2025-09/Eclipse.app/Contents/Eclipse/`
 - **p2 plugin pool** (where SAP/Eclipse JARs live):
   `~/.p2/pool/plugins/`
 - **Build outputs** (gitignored): `build/`, `*.jar`
-- **Runtime token file**: `~/.config/arc1/mcp-token.txt`
+- **MCP server token + port**: SAP's *ABAP Development → MCP Server* preference
+  page (stored in the `com.sap.adt.mcp.core.ui` preference node). This plugin
+  no longer writes a token file.
 
 ## When debugging
 
-- Server doesn't start: `Window → Show View → Error Log`, filter by
-  `com.arc1.mcp`. The `Arc1Startup` activator logs the URL + a stack
-  trace on failure.
+- Server doesn't start: it's SAP's now — confirm the *ABAP Development → MCP
+  Server* preference is enabled and `-DadtMcpServerPrefEnabled=true` is set,
+  then check `Error Log` for `com.sap.adt.mcp.core` entries. Our `Arc1Startup`
+  only logs guidance + autologin under `com.arc1.mcp`.
 - Tool returns `isError: true`: the message inside the error is the
   Java exception class + message. Cross-reference with bytecode if a
   SAP API changed shape.
-- MCP client gets 401: token mismatch between `eclipse.ini` and client
-  config. Re-check both.
+- MCP client gets 401: token mismatch. The token lives on SAP's *ABAP
+  Development → MCP Server* preference page — copy it into the client's
+  `Authorization: Bearer` header.
 - Tool doesn't appear in `tools/list`: extension registration failed.
   Check Error Log for `Skipping MCP tool ... with invalid name/schema/...`.
 

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-11
+
+**Requires ADT 3.60+.** ADT 3.60 ships SAP's MCP server as a supported feature
+with its own activation surface (a *Preferences → ABAP Development → MCP Server*
+page plus the `-DadtMcpServerPrefEnabled=true` startup flag). This release drops
+the reflective server-kickstart that earlier versions used to wake the dormant
+3.58/3.59 server, and turns the plugin into a **pure tool-provider**: its
+`<mcpTool>` contributions register on SAP's server automatically, with no
+reflection into SAP internals.
+
+### Changed
+- **`Arc1Startup`** no longer starts the MCP server. It only logs guidance and
+  (optionally) pre-warms the destination logon. All reflection into
+  `com.sap.adt.mcp.core.internal.AdtMCPCorePlugin` (`startMCPServer`,
+  `peekRunningPort`) is removed.
+- **`META-INF/MANIFEST.MF`**: SAP bundle requirements bumped from
+  `[3.58.0,4.0.0)` to `[3.60.0,4.0.0)`. The plugin now refuses to load on ADT
+  < 3.60 (where the supported activation does not exist) rather than failing at
+  runtime.
+- **Server lifecycle is now SAP's**: port, token, and on/off live on SAP's
+  preference page. Default port is **2234** (SAP's default), not 54322.
+- `scripts/smoke-test.sh` now reads the endpoint + token from `ARC1_MCP_URL` /
+  `ARC1_MCP_TOKEN` env vars instead of `~/.config/arc1/mcp-token.txt`.
+
+### Removed
+- The reflective kickstart of `AdtMCPCorePlugin.startMCPServer(...)` (rationale:
+  superseded by SAP's 3.60 activation — see `docs/decisions.md` D9, which
+  supersedes D3).
+- Writing `~/.config/arc1/mcp-token.txt` — the token is shown on SAP's
+  preference page; the plugin no longer manages tokens.
+- Configuration knobs that controlled the server: `arc1.mcp.token`,
+  `arc1.mcp.port`, `arc1.mcp.kickstart`. Only `arc1.mcp.destination` and
+  `arc1.mcp.autologin` remain.
+
+### Compatibility
+- Tools are unchanged and source-compatible: `IAdtMCPTool.execute(String)` is
+  still honored on 3.60 (SAP's `execute(String, IProgressMonitor)` default
+  delegates to it). The `adtMcpTools` extension point and tool-name validation
+  (`^[A-Za-z0-9_-]+$`) are byte-identical to 3.58.
+
 ## [0.3.0] - 2026-05-22
 
 Extends the HTTP foundation from v0.2 with POST support and ships one typed

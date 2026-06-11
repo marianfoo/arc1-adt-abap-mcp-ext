@@ -26,14 +26,21 @@ This plugin runs inside your Eclipse process and exposes an MCP server on
 
 ## What this plugin adds
 
-- Configurable token via `arc1.mcp.token` so users can rotate or pin.
+- Extra **read-only** MCP tools (search, read source, metadata, transports,
+  authenticated HTTP escape hatches). They run with your existing
+  ABAP-project authorizations.
 - No telemetry, no outbound HTTP from this plugin.
+
+The server's bearer token and port are managed by SAP (the *ABAP Development →
+MCP Server* preference page, as of ADT 3.60); this plugin does not handle,
+store, or write the token.
 
 ## What this plugin does NOT do
 
-- It does not enforce any safety policy on the **SAP-shipped** tools we
-  activate (`abap_generators-generate_objects`, `abap_transport-create`).
-  Those go straight to your SAP backend using your own SAP authorizations.
+- It does not enforce any safety policy on the **SAP-shipped** tools
+  (`abap_generators-generate_objects`, `abap_transport-create`), which SAP
+  ships and registers itself. Those go straight to your SAP backend using your
+  own SAP authorizations.
 - It does not run with elevated privileges. Everything happens as the user
   running Eclipse.
 

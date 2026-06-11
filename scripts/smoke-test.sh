@@ -10,15 +10,18 @@
 set -euo pipefail
 
 DEST=${1:-A4H_001_marian_en_1}
-TOKEN_FILE=$HOME/.config/arc1/mcp-token.txt
-if [[ ! -f "$TOKEN_FILE" ]]; then
-    echo "ERROR: $TOKEN_FILE not found. Has Eclipse started?" >&2
-    exit 1
-fi
-set -a; source <(grep -E '^(PORT|TOKEN|URL)=' "$TOKEN_FILE"); set +a
 
-if [[ -z "${TOKEN:-}" ]]; then
-    echo "ERROR: TOKEN missing from $TOKEN_FILE. Is SAP_CONTROLLED=true? Check Eclipse's MCP preferences for the actual token."
+# As of ADT 3.60 the server URL + token come from SAP's MCP preference page
+# (Preferences -> ABAP Development -> MCP Server). Pass them in via env:
+#   export ARC1_MCP_URL=http://localhost:2234/mcp   # port from the preference page
+#   export ARC1_MCP_TOKEN=<token from the preference page>
+URL=${ARC1_MCP_URL:-http://localhost:2234/mcp}
+TOKEN=${ARC1_MCP_TOKEN:-}
+
+if [[ -z "$TOKEN" ]]; then
+    echo "ERROR: no token. Set ARC1_MCP_TOKEN to the token shown on the SAP MCP" >&2
+    echo "       preference page (Preferences -> ABAP Development -> MCP Server)," >&2
+    echo "       and optionally ARC1_MCP_URL (default: $URL)." >&2
     exit 1
 fi
 
