@@ -45,14 +45,13 @@ init_session() {
 
 call_tool() {
     local id=$1 name=$2 args=$3
-    local raw
-    raw=$(curl -s -X POST "$URL" \
+    curl -s -X POST "$URL" \
         -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
         -H "Accept: application/json, text/event-stream" -H "Mcp-Session-Id: $SESSION" \
-        -d "{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"tools/call\",\"params\":{\"name\":\"$name\",\"arguments\":$args}}")
-    python3 -c "
+        -d "{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"tools/call\",\"params\":{\"name\":\"$name\",\"arguments\":$args}}" \
+    | python3 -c "
 import json, re, sys
-raw = '''$raw'''
+raw = sys.stdin.read()
 m = re.search(r'data:\s*(\{.*\})', raw, re.DOTALL)
 d = json.loads(m.group(1) if m else raw)
 r = d.get('result', {})
@@ -153,6 +152,48 @@ echo "================================================================"
 echo "TEST 11 (v0.3): arc1_sap_list_transports — Modifiable"
 echo "================================================================"
 call_tool 13 arc1_sap_list_transports "{\"destination\":\"$DEST\",\"status\":\"Modifiable\",\"parse\":true}"
+echo ""
+
+echo "================================================================"
+echo "TEST 12 (v0.5): arc1_sap_list_inactive"
+echo "================================================================"
+call_tool 14 arc1_sap_list_inactive "{\"destination\":\"$DEST\"}"
+echo ""
+
+echo "================================================================"
+echo "TEST 13 (v0.5): arc1_sap_where_used — CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 15 arc1_sap_where_used "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/cl_abap_typedescr\",\"maxResults\":5}"
+echo ""
+
+echo "================================================================"
+echo "TEST 14 (v0.5): arc1_sap_package_contents — SABP_TYPES"
+echo "================================================================"
+call_tool 16 arc1_sap_package_contents "{\"destination\":\"$DEST\",\"package\":\"SABP_TYPES\",\"maxResults\":10}"
+echo ""
+
+echo "================================================================"
+echo "TEST 15 (v0.5): arc1_sap_object_structure — CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 17 arc1_sap_object_structure "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/cl_abap_typedescr\"}"
+echo ""
+
+echo "================================================================"
+echo "TEST 16 (v0.5): arc1_sap_check_syntax — CL_ABAP_TYPEDESCR (active)"
+echo "================================================================"
+call_tool 18 arc1_sap_check_syntax "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/cl_abap_typedescr\"}"
+echo ""
+
+echo "================================================================"
+echo "TEST 17 (v0.5): arc1_sap_run_unit_tests — CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 19 arc1_sap_run_unit_tests "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/cl_abap_typedescr\"}"
+echo ""
+
+echo "================================================================"
+echo "TEST 18 (v0.5): arc1_sap_atc_check — CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 20 arc1_sap_atc_check "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/cl_abap_typedescr\",\"maxResults\":10}"
 echo ""
 
 echo "Smoke tests complete."

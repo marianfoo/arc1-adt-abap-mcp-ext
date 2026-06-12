@@ -55,6 +55,21 @@ Eclipse MCP server.
 4. Add a corresponding test case to `scripts/smoke-test.sh`.
 5. Build, install, restart Eclipse, run the smoke test.
 
+### Prototype REST endpoints with the escape hatch first
+
+For a tool backed by an ADT REST endpoint, confirm the live request/response
+shape **before** hard-coding it. The plugin already ships the trace tool: call
+`arc1_sap_http_get` / `arc1_sap_http_post` against a logged-in destination with
+your candidate URI + body, read the real status/headers/body back, then promote
+the confirmed shape into a typed `Arc1Sap…Tool`. No packet capture, no second
+process. Vendor `Content-Type`/`Accept` values and XML body layouts drift across
+ADT releases — this is how you pin them per backend.
+
+For parsing XML responses, use the `Xml` helper (JDK `javax.xml`, by local name
+so namespace prefixes don't matter) rather than regex. Guard `resp.truncated`
+before parsing (the 256 KB body cap can cut XML mid-document), and include the
+raw body as a fallback when the structured parse comes back empty.
+
 ## Code style
 
 - 4-space indent (consistent with existing files).
@@ -64,7 +79,8 @@ Eclipse MCP server.
   MCP tool calls must never throw to the runtime.
 - Bound all output sizes (`maxResults`, `typeFilter`, etc.) to avoid huge
   responses.
-- No third-party libraries. Use the no-dep `Json` helper.
+- No third-party libraries. Use the no-dep `Json` helper for output and the
+  JDK-only `Xml` helper for parsing ADT XML responses.
 
 ## Commit messages
 

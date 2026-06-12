@@ -146,14 +146,15 @@ The server's **port, token, and on/off** are SAP's (preference page +
 ```
 com.arc1.mcp_<version>.jar
 ├── META-INF/MANIFEST.MF         OSGi headers (Require-Bundle: com.sap.adt.* [3.60.0,4.0.0))
-├── plugin.xml                   Extension contributions (11 mcpTool + startup hook)
+├── plugin.xml                   Extension contributions (18 mcpTool + startup hook)
 ├── com/arc1/mcp/
 │   ├── Arc1McpActivator.class   Plugin singleton + log accessor
 │   ├── Arc1Startup.class        IStartup: guidance log + autologin trigger (no reflection)
 │   ├── Arc1AutoLogin.class      Background Job that calls ensureLoggedOn
 │   ├── AdtHttp.class            HTTP helper (GET + POST, 256 KB cap)
 │   ├── Arc1Sap*Tool.class       one class per MCP tool
-│   └── Json.class               no-dep JSON helpers
+│   ├── Json.class               no-dep JSON helpers
+│   └── Xml.class                no-dep XML reader (JDK javax.xml DOM, by local name)
 ```
 
 ## Dependencies
@@ -183,4 +184,12 @@ does not enforce that at runtime in the default (non-strict) resolver mode, and
 `javac` ignores it — so the plugin resolves and compiles. It's a signal worth
 tracking, not a current breakage.
 
-No third-party libraries.
+No third-party libraries. Notably *not* a dependency: the headless
+[`adt-ls`](https://github.com/marianfoo/adt-ls) SDK — inside Eclipse we already
+have the full ADT, so linking the headless edition would add a Node process and
+a second ADT for no new reach. See `docs/decisions.md` D10.
+
+The `Xml` helper is JDK-only (`javax.xml` DOM). The packages it needs
+(`javax.xml`, `javax.xml.parsers`, `org.w3c.dom`, `org.xml.sax`) are declared
+via `Import-Package` and resolve from the OSGi system bundle's JavaSE-21
+package exports — still zero third-party libraries.

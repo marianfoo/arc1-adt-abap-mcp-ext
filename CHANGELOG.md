@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Document the relationship to [`adt-ls`](https://github.com/marianfoo/adt-ls)
+  (the TypeScript SDK over SAP's headless ABAP language server) and record why
+  this plugin does **not** consume it as a dependency: decision **D10** in
+  `docs/decisions.md`, a "What about `adt-ls`?" FAQ entry plus a pick-by-where-
+  you-run table in `README.md`, a Non-goals pointer in `CLAUDE.md`, and a note
+  in `docs/architecture.md`. No code changes.
+
+## [0.5.1] - 2026-06-12
+
+Fix surfaced by a live smoke-test on a 2023-era ABAP system (`A4H_2023`).
+
+### Fixed
+- **`arc1_sap_list_transports`** now works on newer ABAP systems that only serve
+  the transport-organizer **tree** representation and answer the old flat media
+  type with **HTTP 406**. The tool offers both
+  `application/vnd.sap.adt.transportorganizertree.v1+xml` and the legacy
+  `application/vnd.sap.adt.transportorganizer.v1+xml`, letting the server
+  negotiate. The `parse=true` extractor was rewritten to match `<tm:request>`
+  **opening tags** (truncation-tolerant — the tree response can exceed AdtHttp's
+  256 KB cap) with exact local-name attribute matching, and now also returns
+  each request's `target`.
+
+### Known issues
+- **`arc1_sap_find_definition`** returns `NavigationFailureException: I::000`.
+  Root cause (confirmed live): ADT's `/sap/bc/adt/navigation/target` is
+  **POST-only** (GET → 405) and **position-based** — it needs a cursor position
+  in the source — but the tool passes only an identifier name with no position.
+  The fix is a redesign (read source → locate the identifier's offset → navigate
+  from that position), tracked for a follow-up.
+
+## [0.5.0] - 2026-06-12
+
+Adds seven read-only navigation / structure / quality tools (11 → 18) on top of
+SAP's MCP server, plus a JDK-only `Xml` parsing helper that backs them. No new
+third-party dependencies; no server-lifecycle changes.
+
+### Added
+- **`arc1_sap_where_used`** — where-used / find references (impact analysis) via
+  `repository/informationsystem/usageReferences`.
+- **`arc1_sap_package_contents`** — list a package's objects via
+  `repository/nodestructure`.
+- **`arc1_sap_object_structure`** — object outline (methods/attributes/events/
+  includes) via `…/objectstructure`.
+- **`arc1_sap_list_inactive`** — inactive (un-activated) objects via
+  `activation/inactiveobjects`.
+- **`arc1_sap_check_syntax`** — syntax check without activation via `checkruns`;
+  an optional inline `source` checks proposed code transiently (nothing written).
+- **`arc1_sap_run_unit_tests`** — run an object's ABAP Unit tests via
+  `abapunit/testruns` (executes tests server-side; no repository change).
+- **`arc1_sap_atc_check`** — ABAP Test Cockpit static analysis via the
+  `atc/worklists` + `atc/runs` flow (system-default check variant when none given).
+- **`Xml`** helper — minimal `javax.xml` DOM reader (by local name, namespace-
+  agnostic) so XML-returning tools emit structured JSON. JDK-only, so D8 (no
+  third-party deps) still holds.
+
+### Changed
+- `META-INF/MANIFEST.MF`: `Bundle-Version` 0.4.0 → 0.5.0; add `Import-Package`
+  for `javax.xml`, `javax.xml.parsers`, `org.w3c.dom`, `org.xml.sax` (used by the
+  new `Xml` helper).
+- `AdtHttp` Javadoc reworded (GET+POST are current; dropped the "POST comes in
+  v0.3" note).
+
+### Documentation
+- README: document GitHub Copilot for Eclipse's MCP auto-approve options
+  (per-tool "MCP Server and Tool Approval", "Trust MCP tool annotations", and the
+  "Global Auto Approve" warning) — all `arc1_sap_*` tools are read-only and safe
+  to pre-approve per-tool; bumped the download/version references to 0.5.0.
+
+### Notes
+- All seven tools are read-only with respect to the repository. `run_unit_tests`
+  and `atc_check` execute checks/tests on the backend (same as the corresponding
+  ADT menu actions) — their descriptions state this.
+- Each REST tool degrades gracefully: it guards the 256 KB body cap, returns a
+  best-effort structured parse, and includes `rawXml` when parsing is empty — so
+  it stays useful even where a backend's exact XML layout differs by release.
+- `arc1_sap_find_occurrences` (the Java-API local-occurrences tool from plan 02)
+  is intentionally deferred: its SAP factory-instantiation path is unverified and
+  it shares the compile unit with these tools. Tracked in
+  `docs/plans/07-v0.5-read-tools-expansion.md`.
+
 ## [0.4.0] - 2026-06-11
 
 **Requires ADT 3.60+.** ADT 3.60 ships SAP's MCP server as a supported feature

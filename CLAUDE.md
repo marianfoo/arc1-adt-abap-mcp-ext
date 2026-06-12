@@ -47,9 +47,15 @@ This plugin is intentionally **Eclipse-bound**. It is NOT trying to be:
 - A write/activate platform — mutating tools belong in SAP's own MCP
   surface (`abap_transport-create`, `abap_generators-generate_objects`),
   which SAP ships and registers itself.
+- A headless / programmatic / CI driver for ABAP — that's
+  [`adt-ls`](https://github.com/marianfoo/adt-ls) (a TypeScript SDK over SAP's
+  headless `adt-ls` language server). We do **not** consume it as a dependency
+  (it'd mean a Node process + a second headless ADT inside the real one) — see
+  `docs/decisions.md` D10.
 
 If a task is "centralized management", "BTP", or "non-Eclipse" — point the
-user at ARC-1 instead.
+user at ARC-1 instead. If it's "headless", "programmatic", or "from CI/Node" —
+point them at `adt-ls`. Neither belongs inside this plugin.
 
 ## Architecture in one screen
 
@@ -243,6 +249,9 @@ When in doubt, check `docs/decisions.md` first. Highlights:
 - **D8**: No third-party deps. `Json.java` is hand-rolled.
 - **D9**: ADT 3.60 ships supported activation → drop the kickstart, become a
   pure tool-provider (zero reflection into SAP internals).
+- **D10**: `adt-ls` (headless ABAP LS SDK) is a sibling project, not a
+  dependency — keep the dep set to SAP ADT bundles + the JDK; send headless/CI
+  use cases there, not into this plugin.
 
 ## Roadmap (not commitments)
 

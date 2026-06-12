@@ -12,7 +12,7 @@ can now search ABAP repositories, read source code, list transports, inspect
 service bindings, and more.
 
 > [!IMPORTANT]
-> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.4.0 builds
+> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.5.0 builds
 > on SAP's supported MCP server, which first shipped an activation surface in
 > ADT 3.60. For ADT 3.58 / 3.59 use plugin version ≤ 0.3.x instead (those
 > reflectively woke the then-dormant server).
@@ -25,9 +25,10 @@ As of **ADT 3.60**, SAP ships a *supported* MCP server inside Eclipse-for-ABAP.
 It's **off by default** and, on its own, only exposes SAP's own MCP tools. This
 plugin:
 
-1. **Adds 11 read-only ABAP tools** via SAP's documented Eclipse extension
+1. **Adds 18 read-only ABAP tools** via SAP's documented Eclipse extension
    point `com.sap.adt.mcp.core.adtMcpTools` — search, read source, object
-   metadata, transports, and authenticated HTTP escape hatches.
+   metadata, where-used, package/object structure, syntax check, unit tests,
+   ATC, transports, and authenticated HTTP escape hatches.
 2. **Logs you in** automatically to your ABAP project (optional) so the AI can
    reach the backend on the first call.
 
@@ -53,7 +54,7 @@ this plugin's tools then register on it automatically every time it starts.
 ### Step 1: Download the plugin JAR
 
 From the [latest release](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases/latest),
-grab `com.arc1.mcp_0.4.0.jar`.
+grab `com.arc1.mcp_0.5.0.jar`.
 
 ### Step 2: Drop it into Eclipse's `dropins/` folder
 
@@ -157,6 +158,28 @@ Pick **one** client below:
 ```
 
 Click *Apply*. Test it: open Copilot Chat, ask "use abap mcp server to search for ZARC1*".
+
+**Auto-approve the read-only tools (optional).** Recent GitHub Copilot for Eclipse
+can pre-approve MCP tool calls so you aren't prompted on every call. In
+**Preferences → GitHub Copilot → (MCP settings)**:
+
+- **MCP Server and Tool Approval** *(recommended)* — expand the `abap-mcp` server
+  and tick the individual `arc1_sap_*` tools you want pre-approved. **Every
+  `arc1_sap_*` tool this plugin adds is read-only**, so it's safe to auto-approve
+  here. This works regardless of whether a tool advertises an annotation.
+- **Trust MCP tool annotations** — auto-approves tools that advertise a read-only
+  hint, without confirmation. Convenient, but it only covers tools that set the
+  hint, so the per-tool list above is the reliable way to cover the `arc1_sap_*`
+  tools.
+- **Global Auto Approve → "Auto approve all tool calls"** — approves *everything*
+  (terminal commands, file edits, **all** MCP tools) with no confirmation. SAP's
+  own MCP surface alongside these read tools includes mutating ones
+  (`abap_transport-create`, `abap_generators-generate_objects`,
+  `abap_activate_objects`), so leave this **off** and prefer per-tool approval.
+
+> Auto-approving read-only tools still lets the AI read your ABAP and send it to
+> the model on its own initiative — the same data flow you opt into by using the
+> server at all, just without the per-call prompt. It does not enable any writes.
 </details>
 
 <details>
@@ -263,7 +286,7 @@ password" so future restarts log in silently. (Or set
 
 ## What you get — the tools
 
-### Plugin tools (11, all read-only)
+### Plugin tools (18, all read-only)
 
 **Search + metadata** (v0.1.0)
 
@@ -290,6 +313,18 @@ password" so future restarts log in silently. (Or set
 |---|---|
 | `arc1_sap_list_transports` | List transports with username / status / type filters. |
 | `arc1_sap_http_post` | Authenticated POST to any `/sap/bc/adt/...` endpoint (escape hatch). |
+
+**Navigation + structure + quality** (v0.5.0)
+
+| Tool | What it does |
+|---|---|
+| `arc1_sap_where_used` | Where-used / find references for an object (impact analysis). |
+| `arc1_sap_package_contents` | List the objects in a package (top-down exploration). |
+| `arc1_sap_object_structure` | Outline of an object: methods, attributes, events, includes. |
+| `arc1_sap_list_inactive` | List inactive (un-activated) objects on the system. |
+| `arc1_sap_check_syntax` | ABAP syntax check (no activation); can check proposed source transiently. |
+| `arc1_sap_run_unit_tests` | Run an object's ABAP Unit tests (executes them server-side). |
+| `arc1_sap_atc_check` | Run ABAP Test Cockpit static analysis and return findings. |
 
 ### SAP's own MCP tools (alongside these)
 
@@ -321,7 +356,7 @@ export ARC1_MCP_TOKEN=PASTE-TOKEN-FROM-PREFERENCE-PAGE
 ./scripts/smoke-test.sh A4H_001_marian_en_1       # use your destination ID
 ```
 
-This exercises all 11 plugin tools through the MCP protocol end-to-end and
+This exercises all 18 plugin tools through the MCP protocol end-to-end and
 prints the responses.
 
 ---
@@ -363,7 +398,7 @@ local Eclipse install (`~/.p2/pool/plugins/`). Build time: ~3 seconds.
 
 TL;DR: SAP designed the MCP server to be extended via the standard Eclipse
 extension point `com.sap.adt.mcp.core.adtMcpTools`. This plugin contributes
-11 `<mcpTool class="..."/>` entries, which SAP's own `ToolRegistrationService`
+18 `<mcpTool class="..."/>` entries, which SAP's own `ToolRegistrationService`
 picks up whenever the server starts. SAP owns activation (the preference page
 + `-DadtMcpServerPrefEnabled=true`); this plugin never touches the server
 lifecycle.
@@ -383,9 +418,14 @@ versions ≤ 0.3.x handled those by reflectively waking it. 0.4.0 drops that and
 relies on SAP's supported activation, so it's 3.60+ only.
 
 ### Does this read or modify my source code?
-The 11 tools this plugin adds are **read-only**. SAP's own MCP tools may include
-mutating workflows (`abap_generators-generate_objects`, `abap_transport-create`).
-Those use your normal SAP authorizations — same as the equivalent ADT UI action.
+The 18 tools this plugin adds are **read-only with respect to your repository** —
+none create, change, or delete source. Two *execute* code on the backend without
+changing it: `arc1_sap_run_unit_tests` runs an object's ABAP Unit tests and
+`arc1_sap_atc_check` runs ATC static analysis (the same as the corresponding ADT
+menu actions). `arc1_sap_check_syntax` can validate *proposed* source transiently
+without saving it. SAP's own MCP tools may include genuinely mutating workflows
+(`abap_generators-generate_objects`, `abap_transport-create`). All of these use
+your normal SAP authorizations — same as the equivalent ADT UI action.
 
 ### What about credentials / security?
 - The MCP server binds to `localhost` only (not reachable from the network).
@@ -404,6 +444,27 @@ MCP server for SAP ABAP — runs outside Eclipse, has admin policy ceiling,
 audit logging, multi-client governance, BTP-native deployment. Use ARC-1
 when you want a centralized managed service. Use this plugin when you want
 "one developer, inside Eclipse, zero extra processes".
+
+### What about `adt-ls`? Can this plugin use it?
+**[`adt-ls`](https://github.com/marianfoo/adt-ls)** is a TypeScript/Node SDK
+that spawns and drives SAP's *headless* `adt-ls` language server over LSP + MCP.
+It's the out-of-Eclipse cousin of this plugin: a programmatic API for
+repository, source, **activate**, **unit tests**, **ATC**, syntax check, and
+transports — great for scripting and CI.
+
+This plugin does **not** depend on it, by design. We already run *inside*
+Eclipse-for-ABAP, which is the full ADT — pulling in `adt-ls` would spawn a
+second, headless ADT (Java → Node → another JVM) to reach a backend we already
+reach in-process, and would add a third-party runtime plus an extra process
+(both ruled out — see [decision D10](docs/decisions.md#d10-adt-ls-is-a-sibling-project-not-a-dependency)).
+
+Pick by where you run:
+
+| You want… | Use |
+|---|---|
+| MCP tools **inside Eclipse**, zero extra processes | **this plugin** |
+| **Headless / CI / scripting** ABAP automation from Node | [`adt-ls`](https://github.com/marianfoo/adt-ls) |
+| **Centralized, audited, multi-user** MCP (BTP) | [ARC-1](https://github.com/marianfoo/arc-1) |
 
 ### Where do I report bugs?
 [GitHub Issues](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/issues).
