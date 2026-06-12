@@ -12,11 +12,15 @@ import com.sap.adt.mcp.core.IAdtMcpToolCallResult;
 /**
  * List ABAP transport requests via the transport organizer endpoint.
  *
- *   GET /sap/bc/adt/cts/transportrequests?username=&requestStatus=&requestType=
- *   Accept: application/vnd.sap.adt.transportorganizer.v1+xml
+ *   GET /sap/bc/adt/cts/transportrequests?user=&requestStatus=&requestType=
+ *   Accept: application/vnd.sap.adt.transportorganizertree.v1+xml (modern systems),
+ *           falling back to application/vnd.sap.adt.transportorganizer.v1+xml
  *
- * Raw XML returned by default. parse=true does a minimal regex extraction
- * of request blocks for clients that prefer structured data.
+ * Newer ABAP systems only serve the "tree" representation and answer the old
+ * flat media type with HTTP 406, so both are offered and the server negotiates.
+ * Raw XML is returned by default. parse=true does a truncation-tolerant regex
+ * extraction of &lt;tm:request&gt; blocks (the tree response can exceed
+ * AdtHttp's 256 KB cap, so we match opening tags rather than whole elements).
  */
 public class Arc1SapListTransportsTool implements IAdtMCPTool {
 
@@ -82,8 +86,7 @@ public class Arc1SapListTransportsTool implements IAdtMCPTool {
                 sep = '&';
             }
 
-            AdtHttp.Response resp = AdtHttp.get(destination, uri.toString(),
-                "application/vnd.sap.adt.transportorganizer.v1+xml");
+            AdtHttp.Response resp = AdtHttp.get(destination, uri.toString(), ACCEPT);
 
             String body = resp.bodyAsString();
 
@@ -106,7 +109,8 @@ public class Arc1SapListTransportsTool implements IAdtMCPTool {
                     sb.append("\"description\":").append(Json.str(r.description)).append(",");
                     sb.append("\"owner\":").append(Json.str(r.owner)).append(",");
                     sb.append("\"status\":").append(Json.str(r.status)).append(",");
-                    sb.append("\"type\":").append(Json.str(r.type));
+                    sb.append("\"type\":").append(Json.str(r.type)).append(",");
+                    sb.append("\"target\":").append(Json.str(r.target));
                     sb.append("}");
                 }
                 sb.append("]");
@@ -127,27 +131,40 @@ public class Arc1SapListTransportsTool implements IAdtMCPTool {
         }
     }
 
-    private static final Pattern REQ_BLOCK = Pattern.compile(
-        "<tm:request\\b([^>]*)>(.*?)</tm:request>", Pattern.DOTALL);
-    private static final Pattern ATTR = Pattern.compile("(\\w+:?\\w+)=\"([^\"]*)\"");
+    private static final String ACCEPT =
+          "application/vnd.sap.adt.transportorganizertree.v1+xml, "
+        + "application/vnd.sap.adt.transportorganizer.v1+xml";
+
+    // Match the OPENING <tm:request ...> tag only (not the whole element), so a
+    // body truncated mid-tree still yields every complete request. Both the
+    // modern "tree" representation and the older flat list use <tm:request>.
+    private static final Pattern REQ_TAG = Pattern.compile("<tm:request\\b([^>]*?)/?>");
+    // Attribute with optional namespace prefix; group(1) is the local name.
+    private static final Pattern ATTR = Pattern.compile("(?:[\\w.-]+:)?([\\w.-]+)\\s*=\\s*\"([^\"]*)\"");
 
     private static List<TransportRequest> parseTransports(String xml) {
         List<TransportRequest> out = new ArrayList<>();
-        Matcher m = REQ_BLOCK.matcher(xml);
+        Matcher m = REQ_TAG.matcher(xml);
         while (m.find()) {
-            String attrs = m.group(1);
             TransportRequest r = new TransportRequest();
-            Matcher am = ATTR.matcher(attrs);
+            Matcher am = ATTR.matcher(m.group(1));
             while (am.find()) {
-                String name = am.group(1);
+                String name = am.group(1); // local name, prefix stripped
                 String value = am.group(2);
-                if (name.endsWith("number")) r.number = value;
-                else if (name.endsWith("description")) r.description = value;
-                else if (name.endsWith("owner")) r.owner = value;
-                else if (name.endsWith("status")) r.status = value;
-                else if (name.endsWith("type")) r.type = value;
+                switch (name) {
+                    case "number":      r.number = value; break;
+                    case "desc":                          // tree representation
+                    case "description": r.description = value; break;
+                    case "owner":       r.owner = value; break;
+                    case "status":      r.status = value; break;
+                    case "type":        r.type = value; break;
+                    case "target":      r.target = value; break;
+                    default: break;
+                }
             }
-            out.add(r);
+            if (r.number != null) { // skip spurious matches without a request id
+                out.add(r);
+            }
         }
         return out;
     }
@@ -166,6 +183,7 @@ public class Arc1SapListTransportsTool implements IAdtMCPTool {
         String owner;
         String status;
         String type;
+        String target;
     }
 
     private static IAdtMcpToolCallResult error(String msg) {
