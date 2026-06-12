@@ -71,10 +71,10 @@ public class Arc1SapAtcCheckTool implements IAdtMCPTool {
                 ? 100 : Math.min(maxResults.intValue(), 500);
             String variant = checkVariant == null ? "" : checkVariant;
 
-            // Step 1: create worklist.
+            // Step 1: create worklist (no request body — the id comes back as plain text).
             AdtHttp.Response w = AdtHttp.post(destination,
                 "/sap/bc/adt/atc/worklists?checkVariant=" + enc(variant),
-                "text/plain", "application/xml", new byte[0]);
+                "text/plain", null, null);
             if (w.status >= 400) {
                 return step("create worklist", w.status, w.bodyAsString());
             }
@@ -90,7 +90,7 @@ public class Arc1SapAtcCheckTool implements IAdtMCPTool {
                 + "<objectSets xmlns:adtcore=\"http://www.sap.com/adt/core\">"
                 + "<objectSet kind=\"inclusive\">"
                 + "<adtcore:objectReferences>"
-                + "<adtcore:objectReference adtcore:uri=\"" + xml(objectUri) + "\"/>"
+                + "<adtcore:objectReference adtcore:uri=\"" + Xml.escape(objectUri) + "\"/>"
                 + "</adtcore:objectReferences>"
                 + "</objectSet></objectSets></atc:run>";
             AdtHttp.Response r = AdtHttp.post(destination,
@@ -117,7 +117,7 @@ public class Arc1SapAtcCheckTool implements IAdtMCPTool {
             sb.append("{\"status\":").append(f.status);
             sb.append(",\"worklistId\":").append(Json.str(worklistId));
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(f.body);
                 List<Element> findings = Xml.elements(doc, "finding");
                 int shown = Math.min(findings.size(), max);
                 sb.append(",\"count\":").append(findings.size());
@@ -187,12 +187,6 @@ public class Arc1SapAtcCheckTool implements IAdtMCPTool {
         } catch (Throwable t) {
             return s;
         }
-    }
-
-    private static String xml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private static IAdtMcpToolCallResult error(String msg) {

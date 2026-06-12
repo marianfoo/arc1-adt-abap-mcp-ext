@@ -70,7 +70,7 @@ public class Arc1SapListInactiveTool implements IAdtMCPTool {
             StringBuilder sb = new StringBuilder(body.length() + 256);
             sb.append("{\"status\":").append(resp.status);
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 List<Element> refs = Xml.elements(doc, "ref");
                 sb.append(",\"count\":").append(refs.size());
                 sb.append(",\"objects\":[");
@@ -85,7 +85,12 @@ public class Arc1SapListInactiveTool implements IAdtMCPTool {
                     sb.append("\"name\":").append(Json.str(name)).append(",");
                     sb.append("\"type\":").append(Json.str(Xml.attr(ref, "type"))).append(",");
                     sb.append("\"uri\":").append(Json.str(Xml.attr(ref, "uri"))).append(",");
-                    sb.append("\"parentUri\":").append(Json.str(Xml.attr(ref, "parentUri")));
+                    sb.append("\"parentUri\":").append(Json.str(Xml.attr(ref, "parentUri"))).append(",");
+                    String user = Xml.attr(ref, "user");
+                    if (user == null && ref.getParentNode() instanceof Element) {
+                        user = Xml.attr((Element) ref.getParentNode(), "user");
+                    }
+                    sb.append("\"user\":").append(Json.str(user));
                     sb.append("}");
                 }
                 sb.append("]");

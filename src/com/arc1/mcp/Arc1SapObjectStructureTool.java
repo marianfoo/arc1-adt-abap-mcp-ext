@@ -67,7 +67,8 @@ public class Arc1SapObjectStructureTool implements IAdtMCPTool {
                 ? objectUri.substring(0, objectUri.length() - 1) : objectUri;
             String uri = base + "/objectstructure?version=" + ver + "&withShortDescriptions=true";
 
-            AdtHttp.Response resp = AdtHttp.get(destination, uri, "application/xml");
+            AdtHttp.Response resp = AdtHttp.get(destination, uri,
+                "application/vnd.sap.adt.objectstructure.v2+xml, application/xml");
             String body = resp.bodyAsString();
 
             if (resp.status >= 400) {
@@ -82,7 +83,7 @@ public class Arc1SapObjectStructureTool implements IAdtMCPTool {
             sb.append("{\"status\":").append(resp.status);
             sb.append(",\"uri\":").append(Json.str(uri));
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 List<Element> els = Xml.elements(doc, "objectStructureElement");
                 sb.append(",\"count\":").append(els.size());
                 sb.append(",\"components\":[");

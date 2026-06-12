@@ -107,7 +107,7 @@ public class Arc1SapWhereUsedTool implements IAdtMCPTool {
             sb.append("{\"status\":").append(resp.status);
             sb.append(",\"uri\":").append(Json.str(uri));
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 List<Element> refs = Xml.elements(doc, "referencedObject");
                 int total = refs.size();
                 int shown = Math.min(total, max);
@@ -123,7 +123,11 @@ public class Arc1SapWhereUsedTool implements IAdtMCPTool {
                     sb.append("\"type\":").append(Json.str(pick(ref, inner, "type"))).append(",");
                     sb.append("\"uri\":").append(Json.str(pick(ref, inner, "uri"))).append(",");
                     sb.append("\"parentUri\":").append(Json.str(Xml.attr(ref, "parentUri"))).append(",");
-                    sb.append("\"usageInformation\":").append(Json.str(Xml.attr(ref, "usageInformation")));
+                    String usage = Xml.attr(ref, "usageInformation");
+                    if (usage == null) {
+                        usage = Xml.text(Xml.first(ref, "usageInformation"));
+                    }
+                    sb.append("\"usageInformation\":").append(Json.str(usage));
                     sb.append("}");
                 }
                 sb.append("]");

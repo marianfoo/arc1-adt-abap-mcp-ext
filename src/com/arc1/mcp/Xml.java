@@ -33,8 +33,8 @@ final class Xml {
     private Xml() {
     }
 
-    /** Parse a UTF-8 XML document. Throws on malformed input — callers fall back. */
-    static Document parse(String xml) throws Exception {
+    /** Parse an XML document from raw response bytes (the parser honors the prolog's encoding). */
+    static Document parse(byte[] xml) throws Exception {
         DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
         f.setNamespaceAware(true);
         f.setExpandEntityReferences(false);
@@ -45,7 +45,21 @@ final class Xml {
             // older parsers may not support every feature; secure processing is the key one
         }
         DocumentBuilder b = f.newDocumentBuilder();
-        return b.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        return b.parse(new ByteArrayInputStream(xml));
+    }
+
+    /** Parse a UTF-8 XML string. Prefer {@link #parse(byte[])} on raw response bodies. */
+    static Document parse(String xml) throws Exception {
+        return parse(xml.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Escape text for embedding in an XML attribute value or text node. */
+    static String escape(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     /** All descendant elements (any depth) whose local name equals {@code localName}. */

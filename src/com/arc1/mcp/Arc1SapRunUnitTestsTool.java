@@ -2,6 +2,7 @@ package com.arc1.mcp;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -74,7 +75,7 @@ public class Arc1SapRunUnitTestsTool implements IAdtMCPTool {
                 + "<adtcore:objectSets>"
                 + "<objectSet kind=\"inclusive\">"
                 + "<adtcore:objectReferences>"
-                + "<adtcore:objectReference adtcore:uri=\"" + xml(objectUri) + "\"/>"
+                + "<adtcore:objectReference adtcore:uri=\"" + Xml.escape(objectUri) + "\"/>"
                 + "</adtcore:objectReferences>"
                 + "</objectSet>"
                 + "</adtcore:objectSets>"
@@ -95,15 +96,15 @@ public class Arc1SapRunUnitTestsTool implements IAdtMCPTool {
             StringBuilder sb = new StringBuilder(body.length() + 256);
             sb.append("{\"status\":").append(resp.status);
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 List<Element> methods = Xml.elements(doc, "testMethod");
                 List<Element> alerts = Xml.elements(doc, "alert");
                 int failed = 0;
                 for (Element a : alerts) {
                     String sev = Xml.attr(a, "severity");
-                    if (sev != null && (sev.toLowerCase().contains("critical")
-                            || sev.toLowerCase().contains("fatal")
-                            || sev.toLowerCase().contains("error"))) {
+                    String sevLc = sev == null ? "" : sev.toLowerCase(Locale.ROOT);
+                    if (sevLc.contains("critical") || sevLc.contains("fatal")
+                            || sevLc.contains("error")) {
                         failed++;
                     }
                 }
@@ -147,12 +148,6 @@ public class Arc1SapRunUnitTestsTool implements IAdtMCPTool {
             return error("arc1_sap_run_unit_tests failed: " + t.getClass().getSimpleName()
                 + ": " + String.valueOf(t.getMessage()));
         }
-    }
-
-    private static String xml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private static IAdtMcpToolCallResult raw(int status, String body, String note) {

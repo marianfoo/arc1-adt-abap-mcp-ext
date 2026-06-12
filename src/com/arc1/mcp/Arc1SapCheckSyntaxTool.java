@@ -3,6 +3,7 @@ package com.arc1.mcp;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -89,13 +90,13 @@ public class Arc1SapCheckSyntaxTool implements IAdtMCPTool {
             b.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             b.append("<chkrun:checkObjectList xmlns:adtcore=\"http://www.sap.com/adt/core\"")
              .append(" xmlns:chkrun=\"http://www.sap.com/adt/checkrun\">");
-            b.append("<chkrun:checkObject adtcore:uri=\"").append(xml(objectUri))
+            b.append("<chkrun:checkObject adtcore:uri=\"").append(Xml.escape(objectUri))
              .append("\" chkrun:version=\"").append(ver).append("\">");
             if (source != null && !source.isEmpty()) {
                 String b64 = Base64.getEncoder().encodeToString(source.getBytes(StandardCharsets.UTF_8));
                 b.append("<chkrun:artifacts>");
                 b.append("<chkrun:artifact chkrun:contentType=\"text/plain; charset=utf-8\"")
-                 .append(" chkrun:uri=\"").append(xml(sourceUri)).append("\">");
+                 .append(" chkrun:uri=\"").append(Xml.escape(sourceUri)).append("\">");
                 b.append("<chkrun:content>").append(b64).append("</chkrun:content>");
                 b.append("</chkrun:artifact>");
                 b.append("</chkrun:artifacts>");
@@ -118,12 +119,12 @@ public class Arc1SapCheckSyntaxTool implements IAdtMCPTool {
             sb.append("{\"status\":").append(resp.status);
             sb.append(",\"checkedProposedSource\":").append(source != null && !source.isEmpty());
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 List<Element> msgs = Xml.elements(doc, "checkMessage");
                 int errors = 0;
                 for (Element m : msgs) {
                     String t = Xml.attr(m, "type");
-                    if (t != null && t.toUpperCase().startsWith("E")) errors++;
+                    if (t != null && t.toUpperCase(Locale.ROOT).startsWith("E")) errors++;
                 }
                 sb.append(",\"count\":").append(msgs.size());
                 sb.append(",\"errorCount\":").append(errors);
@@ -186,12 +187,6 @@ public class Arc1SapCheckSyntaxTool implements IAdtMCPTool {
     private static String attrAny(Element e, String a, String b) {
         String v = Xml.attr(e, a);
         return v != null ? v : Xml.attr(e, b);
-    }
-
-    private static String xml(String s) {
-        if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private static IAdtMcpToolCallResult raw(int status, String body, String note) {

@@ -2,6 +2,7 @@ package com.arc1.mcp;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -75,7 +76,7 @@ public class Arc1SapPackageContentsTool implements IAdtMCPTool {
                 ? 200 : Math.min(maxResults.intValue(), 1000);
 
             String uri = BASE + "?parent_type=" + enc("DEVC/K")
-                + "&parent_name=" + enc(pkg.toUpperCase())
+                + "&parent_name=" + enc(pkg.toUpperCase(Locale.ROOT))
                 + "&withShortDescriptions=true";
 
             AdtHttp.Response resp = AdtHttp.post(destination, uri, CT, CT,
@@ -94,7 +95,7 @@ public class Arc1SapPackageContentsTool implements IAdtMCPTool {
             sb.append("{\"status\":").append(resp.status);
             sb.append(",\"package\":").append(Json.str(pkg));
             try {
-                Document doc = Xml.parse(body);
+                Document doc = Xml.parse(resp.body);
                 // Each node row contains an OBJECT_NAME element; use its parent as the row.
                 List<Element> anchors = Xml.elements(doc, "OBJECT_NAME");
                 int total = anchors.size();
@@ -111,7 +112,7 @@ public class Arc1SapPackageContentsTool implements IAdtMCPTool {
                     sb.append("\"type\":").append(Json.str(rowText(row, "OBJECT_TYPE"))).append(",");
                     sb.append("\"uri\":").append(Json.str(rowText(row, "OBJECT_URI"))).append(",");
                     sb.append("\"description\":").append(Json.str(rowText(row, "DESCRIPTION"))).append(",");
-                    sb.append("\"expandable\":").append(Json.str(rowText(row, "EXPANDABLE")));
+                    sb.append("\"expandable\":").append("X".equalsIgnoreCase(rowText(row, "EXPANDABLE")));
                     sb.append("}");
                 }
                 sb.append("]");

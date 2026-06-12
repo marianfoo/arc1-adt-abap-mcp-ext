@@ -188,3 +188,8 @@ No third-party libraries. Notably *not* a dependency: the headless
 [`adt-ls`](https://github.com/marianfoo/adt-ls) SDK — inside Eclipse we already
 have the full ADT, so linking the headless edition would add a Node process and
 a second ADT for no new reach. See `docs/decisions.md` D10.
+
+The `Xml` helper is JDK-only (`javax.xml` DOM). The packages it needs
+(`javax.xml`, `javax.xml.parsers`, `org.w3c.dom`, `org.xml.sax`) are declared
+via `Import-Package` and resolve from the OSGi system bundle's JavaSE-21
+package exports — still zero third-party libraries.
