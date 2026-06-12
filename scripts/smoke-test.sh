@@ -45,14 +45,13 @@ init_session() {
 
 call_tool() {
     local id=$1 name=$2 args=$3
-    local raw
-    raw=$(curl -s -X POST "$URL" \
+    curl -s -X POST "$URL" \
         -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
         -H "Accept: application/json, text/event-stream" -H "Mcp-Session-Id: $SESSION" \
-        -d "{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"tools/call\",\"params\":{\"name\":\"$name\",\"arguments\":$args}}")
-    python3 -c "
+        -d "{\"jsonrpc\":\"2.0\",\"id\":$id,\"method\":\"tools/call\",\"params\":{\"name\":\"$name\",\"arguments\":$args}}" \
+    | python3 -c "
 import json, re, sys
-raw = '''$raw'''
+raw = sys.stdin.read()
 m = re.search(r'data:\s*(\{.*\})', raw, re.DOTALL)
 d = json.loads(m.group(1) if m else raw)
 r = d.get('result', {})
