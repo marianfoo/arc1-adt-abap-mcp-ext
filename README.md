@@ -263,7 +263,7 @@ password" so future restarts log in silently. (Or set
 
 ## What you get — the tools
 
-### Plugin tools (11, all read-only)
+### Plugin tools (13, all read-only)
 
 **Search + metadata** (v0.1.0)
 
@@ -290,6 +290,13 @@ password" so future restarts log in silently. (Or set
 |---|---|
 | `arc1_sap_list_transports` | List transports with username / status / type filters. |
 | `arc1_sap_http_post` | Authenticated POST to any `/sap/bc/adt/...` endpoint (escape hatch). |
+
+**Navigation + activation** (v0.5.0)
+
+| Tool | What it does |
+|---|---|
+| `arc1_sap_where_used` | Where-used / impact analysis: which objects reference a given object (RIS service). |
+| `arc1_sap_list_inactive` | List objects the user has in an inactive (not-yet-activated) state. |
 
 ### SAP's own MCP tools (alongside these)
 
@@ -383,7 +390,7 @@ versions ≤ 0.3.x handled those by reflectively waking it. 0.4.0 drops that and
 relies on SAP's supported activation, so it's 3.60+ only.
 
 ### Does this read or modify my source code?
-The 11 tools this plugin adds are **read-only**. SAP's own MCP tools may include
+The 13 tools this plugin adds are **read-only**. SAP's own MCP tools may include
 mutating workflows (`abap_generators-generate_objects`, `abap_transport-create`).
 Those use your normal SAP authorizations — same as the equivalent ADT UI action.
 

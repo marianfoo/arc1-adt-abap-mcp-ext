@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-12
+
+Adds two read-only navigation tools (tool count → 13). Both reach the backend
+the plugin's existing way (an Eclipse Java service / `AdtHttp`), add no
+SAP-internal reflection, and run server-side — nothing is mutated.
+
+### Added
+- **`arc1_sap_where_used`** — where-used / impact analysis: lists the objects
+  that reference a given ABAP object. Wraps SAP's public
+  `IAdtRisUsageReferencesSearchService` (the Repository Information System behind
+  Eclipse's Where-Used List), resolving the destination's ABAP project via
+  `AdtProjectServiceFactory`. Because it goes through the Java service, no REST
+  request-body shape is hard-coded — this **retires the v0.3 deferral** that was
+  waiting on an HTTP trace of the `usageReferences` request body.
+- **`arc1_sap_list_inactive`** — lists the objects the logged-on user has in an
+  inactive (not-yet-activated) state via
+  `GET /sap/bc/adt/activation/inactiveobjects`. `parse=true` returns a structured
+  list; default is the raw XML.
+- **`Xml`** — internal namespace-agnostic DOM helper over the JDK's built-in
+  `javax.xml` (no third-party dependency — D8 holds; XXE-hardened). Replaces
+  ad-hoc regex XML parsing; first consumer is `arc1_sap_list_inactive`.
+
+### Dependencies
+- `Require-Bundle` now includes `com.sap.adt.ris.model;[3.60.0,4.0.0)` — the EMF
+  model interfaces for the usage-references request/result.
+
+### Notes
+- `arc1_sap_where_used` needs the destination's ABAP project to be logged on
+  (`Arc1AutoLogin` pre-warms this). If no project maps to the destination it
+  returns a clear, actionable error rather than throwing.
+
 ## [0.4.0] - 2026-06-11
 
 **Requires ADT 3.60+.** ADT 3.60 ships SAP's MCP server as a supported feature

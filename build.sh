@@ -33,6 +33,7 @@ pick() {
 BUNDLES=(
     "com.sap.adt.mcp.core"
     "com.sap.adt.ris.search"
+    "com.sap.adt.ris.model"
     "com.sap.adt.tools.core"
     "com.sap.adt.tools.core.base"
     "com.sap.adt.project"

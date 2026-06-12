@@ -26,8 +26,9 @@ import com.sap.adt.communication.session.IStatelessSystemSession;
  * Thin facade over Eclipse's public ADT REST infrastructure. Reuses Eclipse's
  * destination/cookie/session machinery so callers never deal with auth.
  *
- * Use {@link #get(String, String, String)} for GET-only flows (v0.2). POST
- * support comes in v0.3 when where-used and related endpoints are wired up.
+ * {@link #get(String, String, String)} and {@link #post(String, String, String,
+ * String, byte[])} cover the read-only ADT endpoints the tools call; response
+ * bodies are capped at {@link #MAX_BODY_BYTES}.
  */
 final class AdtHttp {
 

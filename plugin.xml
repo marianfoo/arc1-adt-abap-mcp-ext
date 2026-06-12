@@ -13,6 +13,8 @@
       <mcpTool class="com.arc1.mcp.Arc1SapReadSourceTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapHttpPostTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapListTransportsTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapWhereUsedTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapListInactiveTool"/>
    </extension>
    <extension point="org.eclipse.ui.startup">
       <startup class="com.arc1.mcp.Arc1Startup"/>

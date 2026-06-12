@@ -155,5 +155,17 @@ echo "================================================================"
 call_tool 13 arc1_sap_list_transports "{\"destination\":\"$DEST\",\"status\":\"Modifiable\",\"parse\":true}"
 echo ""
 
+echo "================================================================"
+echo "TEST 12 (v0.5): arc1_sap_where_used — CL_ABAP_TYPEDESCR"
+echo "================================================================"
+call_tool 14 arc1_sap_where_used "{\"destination\":\"$DEST\",\"objectUri\":\"/sap/bc/adt/oo/classes/CL_ABAP_TYPEDESCR\",\"maxResults\":5}"
+echo ""
+
+echo "================================================================"
+echo "TEST 13 (v0.5): arc1_sap_list_inactive — parsed"
+echo "================================================================"
+call_tool 15 arc1_sap_list_inactive "{\"destination\":\"$DEST\",\"parse\":true}"
+echo ""
+
 echo "Smoke tests complete."
 rm -f "$HEAD"
