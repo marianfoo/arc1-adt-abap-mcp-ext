@@ -47,6 +47,12 @@ third-party dependencies; no server-lifecycle changes.
 - `AdtHttp` Javadoc reworded (GET+POST are current; dropped the "POST comes in
   v0.3" note).
 
+### Documentation
+- README: document GitHub Copilot for Eclipse's MCP auto-approve options
+  (per-tool "MCP Server and Tool Approval", "Trust MCP tool annotations", and the
+  "Global Auto Approve" warning) — all `arc1_sap_*` tools are read-only and safe
+  to pre-approve per-tool; bumped the download/version references to 0.5.0.
+
 ### Notes
 - All seven tools are read-only with respect to the repository. `run_unit_tests`
   and `atc_check` execute checks/tests on the backend (same as the corresponding

@@ -12,7 +12,7 @@ can now search ABAP repositories, read source code, list transports, inspect
 service bindings, and more.
 
 > [!IMPORTANT]
-> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.4.0 builds
+> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.5.0 builds
 > on SAP's supported MCP server, which first shipped an activation surface in
 > ADT 3.60. For ADT 3.58 / 3.59 use plugin version ≤ 0.3.x instead (those
 > reflectively woke the then-dormant server).
@@ -54,7 +54,7 @@ this plugin's tools then register on it automatically every time it starts.
 ### Step 1: Download the plugin JAR
 
 From the [latest release](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases/latest),
-grab `com.arc1.mcp_0.4.0.jar`.
+grab `com.arc1.mcp_0.5.0.jar`.
 
 ### Step 2: Drop it into Eclipse's `dropins/` folder
 
@@ -158,6 +158,28 @@ Pick **one** client below:
 ```
 
 Click *Apply*. Test it: open Copilot Chat, ask "use abap mcp server to search for ZARC1*".
+
+**Auto-approve the read-only tools (optional).** Recent GitHub Copilot for Eclipse
+can pre-approve MCP tool calls so you aren't prompted on every call. In
+**Preferences → GitHub Copilot → (MCP settings)**:
+
+- **MCP Server and Tool Approval** *(recommended)* — expand the `abap-mcp` server
+  and tick the individual `arc1_sap_*` tools you want pre-approved. **Every
+  `arc1_sap_*` tool this plugin adds is read-only**, so it's safe to auto-approve
+  here. This works regardless of whether a tool advertises an annotation.
+- **Trust MCP tool annotations** — auto-approves tools that advertise a read-only
+  hint, without confirmation. Convenient, but it only covers tools that set the
+  hint, so the per-tool list above is the reliable way to cover the `arc1_sap_*`
+  tools.
+- **Global Auto Approve → "Auto approve all tool calls"** — approves *everything*
+  (terminal commands, file edits, **all** MCP tools) with no confirmation. SAP's
+  own MCP surface alongside these read tools includes mutating ones
+  (`abap_transport-create`, `abap_generators-generate_objects`,
+  `abap_activate_objects`), so leave this **off** and prefer per-tool approval.
+
+> Auto-approving read-only tools still lets the AI read your ABAP and send it to
+> the model on its own initiative — the same data flow you opt into by using the
+> server at all, just without the per-call prompt. It does not enable any writes.
 </details>
 
 <details>
