@@ -19,8 +19,10 @@ GitHub Releases is enough for v0.1.
 ## What I can do for you (automated)
 
 - Write `.github/workflows/build.yml` for CI build verification on every push.
-- Write `.github/workflows/release.yml` to attach a JAR to each GitHub release
-  on tag push.
+- Write `.github/workflows/release.yml` to create each GitHub Release on tag
+  push.
+- Write `scripts/publish-release.sh` to build locally, push the tag, wait for
+  the release workflow, and upload the JAR asset.
 - Write `CHANGELOG.md` starter with semver guidance.
 - Write `CONTRIBUTING.md` with build + testing instructions.
 - Write `.gitignore`, `.editorconfig`, `SECURITY.md`.
@@ -41,13 +43,13 @@ GitHub Releases is enough for v0.1.
 3. **Pick a license author name**. Currently set to "Marian Zeis" in
    `LICENSE` — change if needed.
 
-4. **Cut the first tag**:
+4. **Publish the first tag**:
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
+   ./scripts/publish-release.sh
    ```
-   The release workflow will build the JAR and attach it to the auto-created
-   GitHub Release.
+   The script builds the JAR from your local Eclipse/ADT bundles, pushes the
+   matching `v<X.Y.Z>` tag, waits for the release workflow, and uploads the JAR
+   to the GitHub Release.
 
 5. **(Optional) Update the README screenshot** with one of your own.
 

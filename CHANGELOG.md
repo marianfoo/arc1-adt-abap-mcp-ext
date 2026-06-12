@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Documentation
-- Document the relationship to [`adt-ls`](https://github.com/marianfoo/adt-ls)
-  (the TypeScript SDK over SAP's headless ABAP language server) and record why
-  this plugin does **not** consume it as a dependency: decision **D10** in
-  `docs/decisions.md`, a "What about `adt-ls`?" FAQ entry plus a pick-by-where-
-  you-run table in `README.md`, a Non-goals pointer in `CLAUDE.md`, and a note
-  in `docs/architecture.md`. No code changes.
-
 ## [0.5.1] - 2026-06-12
 
 Fix surfaced by a live smoke-test on a 2023-era ABAP system (`A4H_2023`).
@@ -37,6 +29,20 @@ Fix surfaced by a live smoke-test on a 2023-era ABAP system (`A4H_2023`).
   in the source — but the tool passes only an identifier name with no position.
   The fix is a redesign (read source → locate the identifier's offset → navigate
   from that position), tracked for a follow-up.
+
+### Publishing
+- Added `scripts/publish-release.sh` to automate the maintainer release path:
+  build from the local Eclipse/ADT bundles, create and push the matching tag,
+  wait for the GitHub Release workflow, and upload the JAR asset.
+
+### Documentation
+- Updated the README download/version references from `0.5.0` to `0.5.1`.
+- Document the relationship to [`adt-ls`](https://github.com/marianfoo/adt-ls)
+  (the TypeScript SDK over SAP's headless ABAP language server) and record why
+  this plugin does **not** consume it as a dependency: decision **D10** in
+  `docs/decisions.md`, a "What about `adt-ls`?" FAQ entry plus a pick-by-where-
+  you-run table in `README.md`, a Non-goals pointer in `CLAUDE.md`, and a note
+  in `docs/architecture.md`. No code changes.
 
 ## [0.5.0] - 2026-06-12
 

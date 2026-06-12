@@ -12,7 +12,7 @@ can now search ABAP repositories, read source code, list transports, inspect
 service bindings, and more.
 
 > [!IMPORTANT]
-> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.5.0 builds
+> **Requires ABAP Development Tools (ADT) 3.60 or newer.** Version 0.5.1 builds
 > on SAP's supported MCP server, which first shipped an activation surface in
 > ADT 3.60. For ADT 3.58 / 3.59 use plugin version ≤ 0.3.x instead (those
 > reflectively woke the then-dormant server).
@@ -54,7 +54,7 @@ this plugin's tools then register on it automatically every time it starts.
 ### Step 1: Download the plugin JAR
 
 From the [latest release](https://github.com/marianfoo/arc1-adt-abap-mcp-ext/releases/latest),
-grab `com.arc1.mcp_0.5.0.jar`.
+grab `com.arc1.mcp_0.5.1.jar`.
 
 ### Step 2: Drop it into Eclipse's `dropins/` folder
 

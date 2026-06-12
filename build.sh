@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build com.arc1.mcp_0.1.0.jar and copy it into Eclipse ADT's dropins folder.
+# Build com.arc1.mcp_<version>.jar and copy it into Eclipse ADT's dropins folder.
 #
 # Prereqs: ADT 3.60+ installed under ~/eclipse/java-2025-09/Eclipse.app and the
 # corresponding bundles cached in ~/.p2/pool/plugins.

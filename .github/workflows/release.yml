@@ -9,8 +9,9 @@ permissions:
   contents: write
 
 # Note: this workflow does NOT build the plugin in CI (see build.yml for why).
-# It creates an empty GitHub Release on tag push so the maintainer can attach
-# the locally-built JAR with `gh release upload v<X.Y.Z> com.arc1.mcp_<X.Y.Z>.jar`.
+# It creates a GitHub Release on tag push. The maintainer publish script builds
+# the JAR locally, pushes the tag, waits for this release, and uploads the asset:
+# `./scripts/publish-release.sh`.
 
 jobs:
   create-release:
@@ -36,4 +37,4 @@ jobs:
 
             ## Notes
 
-            The plugin JAR is built locally (SAP ADT JARs aren't redistributable, so no public CI build for v0.1). The maintainer uploads the JAR with `gh release upload` after each tag push. If the JAR is missing from this release, please open an issue.
+            The plugin JAR is built and uploaded by `./scripts/publish-release.sh` from the maintainer machine. SAP ADT JARs aren't redistributable, so public CI only creates the release shell; the script performs the local build and asset upload. If the JAR is missing from this release, please open an issue.
