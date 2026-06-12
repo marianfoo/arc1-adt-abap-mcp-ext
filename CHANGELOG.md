@@ -15,6 +15,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you-run table in `README.md`, a Non-goals pointer in `CLAUDE.md`, and a note
   in `docs/architecture.md`. No code changes.
 
+## [0.5.0] - 2026-06-12
+
+Adds seven read-only navigation / structure / quality tools (11 → 18) on top of
+SAP's MCP server, plus a JDK-only `Xml` parsing helper that backs them. No new
+third-party dependencies; no server-lifecycle changes.
+
+### Added
+- **`arc1_sap_where_used`** — where-used / find references (impact analysis) via
+  `repository/informationsystem/usageReferences`.
+- **`arc1_sap_package_contents`** — list a package's objects via
+  `repository/nodestructure`.
+- **`arc1_sap_object_structure`** — object outline (methods/attributes/events/
+  includes) via `…/objectstructure`.
+- **`arc1_sap_list_inactive`** — inactive (un-activated) objects via
+  `activation/inactiveobjects`.
+- **`arc1_sap_check_syntax`** — syntax check without activation via `checkruns`;
+  an optional inline `source` checks proposed code transiently (nothing written).
+- **`arc1_sap_run_unit_tests`** — run an object's ABAP Unit tests via
+  `abapunit/testruns` (executes tests server-side; no repository change).
+- **`arc1_sap_atc_check`** — ABAP Test Cockpit static analysis via the
+  `atc/worklists` + `atc/runs` flow (system-default check variant when none given).
+- **`Xml`** helper — minimal `javax.xml` DOM reader (by local name, namespace-
+  agnostic) so XML-returning tools emit structured JSON. JDK-only, so D8 (no
+  third-party deps) still holds.
+
+### Changed
+- `META-INF/MANIFEST.MF`: `Bundle-Version` 0.4.0 → 0.5.0; add `Import-Package`
+  for `javax.xml`, `javax.xml.parsers`, `org.w3c.dom`, `org.xml.sax` (used by the
+  new `Xml` helper).
+- `AdtHttp` Javadoc reworded (GET+POST are current; dropped the "POST comes in
+  v0.3" note).
+
+### Notes
+- All seven tools are read-only with respect to the repository. `run_unit_tests`
+  and `atc_check` execute checks/tests on the backend (same as the corresponding
+  ADT menu actions) — their descriptions state this.
+- Each REST tool degrades gracefully: it guards the 256 KB body cap, returns a
+  best-effort structured parse, and includes `rawXml` when parsing is empty — so
+  it stays useful even where a backend's exact XML layout differs by release.
+- `arc1_sap_find_occurrences` (the Java-API local-occurrences tool from plan 02)
+  is intentionally deferred: its SAP factory-instantiation path is unverified and
+  it shares the compile unit with these tools. Tracked in
+  `docs/plans/07-v0.5-read-tools-expansion.md`.
+
 ## [0.4.0] - 2026-06-11
 
 **Requires ADT 3.60+.** ADT 3.60 ships SAP's MCP server as a supported feature

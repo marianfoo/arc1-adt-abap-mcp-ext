@@ -146,14 +146,15 @@ The server's **port, token, and on/off** are SAP's (preference page +
 ```
 com.arc1.mcp_<version>.jar
 ├── META-INF/MANIFEST.MF         OSGi headers (Require-Bundle: com.sap.adt.* [3.60.0,4.0.0))
-├── plugin.xml                   Extension contributions (11 mcpTool + startup hook)
+├── plugin.xml                   Extension contributions (18 mcpTool + startup hook)
 ├── com/arc1/mcp/
 │   ├── Arc1McpActivator.class   Plugin singleton + log accessor
 │   ├── Arc1Startup.class        IStartup: guidance log + autologin trigger (no reflection)
 │   ├── Arc1AutoLogin.class      Background Job that calls ensureLoggedOn
 │   ├── AdtHttp.class            HTTP helper (GET + POST, 256 KB cap)
 │   ├── Arc1Sap*Tool.class       one class per MCP tool
-│   └── Json.class               no-dep JSON helpers
+│   ├── Json.class               no-dep JSON helpers
+│   └── Xml.class                no-dep XML reader (JDK javax.xml DOM, by local name)
 ```
 
 ## Dependencies

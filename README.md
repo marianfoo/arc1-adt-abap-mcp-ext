@@ -25,9 +25,10 @@ As of **ADT 3.60**, SAP ships a *supported* MCP server inside Eclipse-for-ABAP.
 It's **off by default** and, on its own, only exposes SAP's own MCP tools. This
 plugin:
 
-1. **Adds 11 read-only ABAP tools** via SAP's documented Eclipse extension
+1. **Adds 18 read-only ABAP tools** via SAP's documented Eclipse extension
    point `com.sap.adt.mcp.core.adtMcpTools` — search, read source, object
-   metadata, transports, and authenticated HTTP escape hatches.
+   metadata, where-used, package/object structure, syntax check, unit tests,
+   ATC, transports, and authenticated HTTP escape hatches.
 2. **Logs you in** automatically to your ABAP project (optional) so the AI can
    reach the backend on the first call.
 
@@ -263,7 +264,7 @@ password" so future restarts log in silently. (Or set
 
 ## What you get — the tools
 
-### Plugin tools (11, all read-only)
+### Plugin tools (18, all read-only)
 
 **Search + metadata** (v0.1.0)
 
@@ -290,6 +291,18 @@ password" so future restarts log in silently. (Or set
 |---|---|
 | `arc1_sap_list_transports` | List transports with username / status / type filters. |
 | `arc1_sap_http_post` | Authenticated POST to any `/sap/bc/adt/...` endpoint (escape hatch). |
+
+**Navigation + structure + quality** (v0.5.0)
+
+| Tool | What it does |
+|---|---|
+| `arc1_sap_where_used` | Where-used / find references for an object (impact analysis). |
+| `arc1_sap_package_contents` | List the objects in a package (top-down exploration). |
+| `arc1_sap_object_structure` | Outline of an object: methods, attributes, events, includes. |
+| `arc1_sap_list_inactive` | List inactive (un-activated) objects on the system. |
+| `arc1_sap_check_syntax` | ABAP syntax check (no activation); can check proposed source transiently. |
+| `arc1_sap_run_unit_tests` | Run an object's ABAP Unit tests (executes them server-side). |
+| `arc1_sap_atc_check` | Run ABAP Test Cockpit static analysis and return findings. |
 
 ### SAP's own MCP tools (alongside these)
 
@@ -321,7 +334,7 @@ export ARC1_MCP_TOKEN=PASTE-TOKEN-FROM-PREFERENCE-PAGE
 ./scripts/smoke-test.sh A4H_001_marian_en_1       # use your destination ID
 ```
 
-This exercises all 11 plugin tools through the MCP protocol end-to-end and
+This exercises all 18 plugin tools through the MCP protocol end-to-end and
 prints the responses.
 
 ---
@@ -363,7 +376,7 @@ local Eclipse install (`~/.p2/pool/plugins/`). Build time: ~3 seconds.
 
 TL;DR: SAP designed the MCP server to be extended via the standard Eclipse
 extension point `com.sap.adt.mcp.core.adtMcpTools`. This plugin contributes
-11 `<mcpTool class="..."/>` entries, which SAP's own `ToolRegistrationService`
+18 `<mcpTool class="..."/>` entries, which SAP's own `ToolRegistrationService`
 picks up whenever the server starts. SAP owns activation (the preference page
 + `-DadtMcpServerPrefEnabled=true`); this plugin never touches the server
 lifecycle.
@@ -383,9 +396,14 @@ versions ≤ 0.3.x handled those by reflectively waking it. 0.4.0 drops that and
 relies on SAP's supported activation, so it's 3.60+ only.
 
 ### Does this read or modify my source code?
-The 11 tools this plugin adds are **read-only**. SAP's own MCP tools may include
-mutating workflows (`abap_generators-generate_objects`, `abap_transport-create`).
-Those use your normal SAP authorizations — same as the equivalent ADT UI action.
+The 18 tools this plugin adds are **read-only with respect to your repository** —
+none create, change, or delete source. Two *execute* code on the backend without
+changing it: `arc1_sap_run_unit_tests` runs an object's ABAP Unit tests and
+`arc1_sap_atc_check` runs ATC static analysis (the same as the corresponding ADT
+menu actions). `arc1_sap_check_syntax` can validate *proposed* source transiently
+without saving it. SAP's own MCP tools may include genuinely mutating workflows
+(`abap_generators-generate_objects`, `abap_transport-create`). All of these use
+your normal SAP authorizations — same as the equivalent ADT UI action.
 
 ### What about credentials / security?
 - The MCP server binds to `localhost` only (not reachable from the network).

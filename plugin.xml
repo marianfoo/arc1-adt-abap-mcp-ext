@@ -13,6 +13,13 @@
       <mcpTool class="com.arc1.mcp.Arc1SapReadSourceTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapHttpPostTool"/>
       <mcpTool class="com.arc1.mcp.Arc1SapListTransportsTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapListInactiveTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapWhereUsedTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapPackageContentsTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapObjectStructureTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapCheckSyntaxTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapRunUnitTestsTool"/>
+      <mcpTool class="com.arc1.mcp.Arc1SapAtcCheckTool"/>
    </extension>
    <extension point="org.eclipse.ui.startup">
       <startup class="com.arc1.mcp.Arc1Startup"/>
