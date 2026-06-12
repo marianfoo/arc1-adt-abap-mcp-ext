@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-12
+
+Fix surfaced by a live smoke-test on a 2023-era ABAP system (`A4H_2023`).
+
+### Fixed
+- **`arc1_sap_list_transports`** now works on newer ABAP systems that only serve
+  the transport-organizer **tree** representation and answer the old flat media
+  type with **HTTP 406**. The tool offers both
+  `application/vnd.sap.adt.transportorganizertree.v1+xml` and the legacy
+  `application/vnd.sap.adt.transportorganizer.v1+xml`, letting the server
+  negotiate. The `parse=true` extractor was rewritten to match `<tm:request>`
+  **opening tags** (truncation-tolerant — the tree response can exceed AdtHttp's
+  256 KB cap) with exact local-name attribute matching, and now also returns
+  each request's `target`.
+
+### Known issues
+- **`arc1_sap_find_definition`** returns `NavigationFailureException: I::000`.
+  Root cause (confirmed live): ADT's `/sap/bc/adt/navigation/target` is
+  **POST-only** (GET → 405) and **position-based** — it needs a cursor position
+  in the source — but the tool passes only an identifier name with no position.
+  The fix is a redesign (read source → locate the identifier's offset → navigate
+  from that position), tracked for a follow-up.
+
 ## [0.5.0] - 2026-06-12
 
 Adds two read-only navigation tools (tool count → 13). Both reach the backend
